@@ -1,5 +1,8 @@
 Proyectos escritos en Haskell para CI-4251, Programación Funcional Avanzada.
-Universidad Simón Bolívar
+Universidad Simón Bolívar.
 
 Stefani Castellanos
-11-11394
+probando 123
+dsasda
+adsada
+sdasdasd
