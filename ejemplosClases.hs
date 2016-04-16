@@ -12,9 +12,9 @@ search [] _ _ _ _ = Myb.Nothing
 search (r : rs) s op p n =
     if p r then Myb.Just r
     else search rs' s' op p n
-    where s' = r : s
+    where s' = r : s -- Visitados
           ms = (n r) \\ s'
-          rs' = nub (op rs ms)
+          rs' = nub (op rs ms) -- cola o pila de los que voy a recorrer
 
 bfs :: Eq a => (a -> Bool) -> (a -> [a]) -> a -> Maybe a
 bfs p n r = search [r] [] (++) p n
@@ -30,3 +30,5 @@ child 4 = [4]
 child 5 = [6]
 child 6 = [1]
 -- child _ = []
+
+-- Eliminando la recursión explícita del código anterior tenemos:
