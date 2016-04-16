@@ -2,6 +2,7 @@
 
 import qualified Data.Maybe as Myb
 import Data.List ((\\), nub)
+import qualified Data.Monoid as Mnid
 -------------------------------------------------------------------------------
 -- Clase 12-04-16
 -------------------------------------------------------------------------------
@@ -32,3 +33,13 @@ child 6 = [1]
 -- child _ = []
 
 -- Eliminando la recursión explícita del código anterior tenemos:
+
+-------------------------------------------------------------------------------
+-- Clase 14-04-16 (Data.Monoids, Data.Functor, Data.Applicative). PRUEBAS
+-------------------------------------------------------------------------------
+mybConcatF = Mnid.getFirst (Mnid.mconcat . map  Mnid.First $ [Myb.Nothing, Myb.Just 2, Myb.Just 1])
+-- => Just 2
+mybConcatL = Mnid.getLast (Mnid.mconcat . map  Mnid.Last $ [Myb.Nothing, Myb.Just 2, Myb.Just 1])
+-- => Just 1
+mybConcatN = Mnid.getLast (Mnid.mconcat . map  Mnid.Last $ [Myb.Nothing, Myb.Nothing, Myb.Nothing])
+-- => Nothing
