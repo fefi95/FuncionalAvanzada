@@ -43,3 +43,22 @@ mybConcatL = Mnid.getLast (Mnid.mconcat . map  Mnid.Last $ [Myb.Nothing, Myb.Jus
 -- => Just 1
 mybConcatN = Mnid.getLast (Mnid.mconcat . map  Mnid.Last $ [Myb.Nothing, Myb.Nothing, Myb.Nothing])
 -- => Nothing
+
+-- Implementar instancia de Either e.
+data Ider e a = Lef e | Rai a
+
+instance Functor (Ider a) where
+    fmap _ (Lef e) = Lef e
+    fmap f (Rai a) = Rai (f a)
+
+-- Implementar instancia de Pair a.
+data Pair a = Pair a a
+
+instance Functor Pair where
+    fmap f (Pair a b) = Pair (f a) (f b)
+
+-- "The composition of two Functors is also a Functor."
+-- Es cierto puesto que Si tenemos Functor f y Functor f' tenemos que
+-- fmap :: (a -> b) -> f a -> f b y fmap :: (a -> b) -> f' a -> f' b
+-- y sabemos que fmap debe cumplir con fmap (g . h) = (fmap g) . (fmap h)
+-- por lo tanto el nuevo fmap seria de un functor dentro de otro.
