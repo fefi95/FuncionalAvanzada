@@ -62,3 +62,20 @@ instance Functor Pair where
 -- fmap :: (a -> b) -> f a -> f b y fmap :: (a -> b) -> f' a -> f' b
 -- y sabemos que fmap debe cumplir con fmap (g . h) = (fmap g) . (fmap h)
 -- por lo tanto el nuevo fmap seria de un functor dentro de otro.
+
+-- APPLICATIVE
+-- Explicación/Demostración u <*> (v <*> w) = pure(.) <*> u <*> v <*> w
+
+-- Determinamos la firma de los argumentos involucrados en la expresión izq
+-- <*> :: f (a -> b) -> f a -> f b podemos inferir que
+-- u :: f (a -> b) y v <*> w :: f a usando el tipo de <*> podemos determinar que
+-- v :: f (a -> c) y w :: f c. Por el otro lado de la igualdad tenemos que
+
+-- Determinamos la firma de los argumentos involucrados en la expresión izq
+-- pure (.) :: f ((a -> b) (b -> c) -> a -> c) por lo tanto,
+-- u :: f (a -> b) y v :: f (b -> c) luego,
+-- pure(.) <*> u <*> v :: f (a -> c) lo que implica que w :: f c.
+-- Los tipos de ambas expresiones coinciden!.
+
+-- esta propiedad de puede entender como la composición de funciones en donde
+-- f(g x) = (f . g) x
