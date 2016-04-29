@@ -80,7 +80,7 @@ addOnes :: [Sample Double] -> [Sample Double]
 addOnes = map (\s -> Sample { x = 1.0 : (x s), y = y s })
 
 theta :: Hypothesis Double -> Sample Double -> Double
-theta h s = undefined
+theta h s = sum (zipWith (*) (c h) (x s))
 
 cost :: Hypothesis Double -> [Sample Double] -> Double
 cost h ss = undefined
