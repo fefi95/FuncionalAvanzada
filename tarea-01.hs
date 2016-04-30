@@ -96,9 +96,9 @@ gd :: Double -> Hypothesis Double -> [Sample Double]
 -- gd alpha h ss = undefined
 gd alpha h ss = unfoldr newH (h, 0)
                 where newH (h1, i) = if veryClose (cost h1 ss') (cost h2 ss')
-                             then Nothing
-                             else Just ([i, h2, cost h2 ss' ],(h2, i + 1))
-                             where h2 = descend alpha h1 ss'
+                                     then Nothing
+                                     else Just ((i, h1, cost h1 ss'),(h2, i + 1))
+                                     where h2 = descend alpha h1 ss'
                       ss' = addOnes ss
 
 -- Monoid
