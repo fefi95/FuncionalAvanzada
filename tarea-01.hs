@@ -84,16 +84,21 @@ theta h s = sum (zipWith (*) (c h) (x s))
 
 cost :: Hypothesis Double -> [Sample Double] -> Double
 cost h ss = su / 2 * n
-            where aux (n, su) s = (n + 1, ((theta h s) - (y s)) ** 2 + su)
-                  (n, su) = foldl' aux (0, 0) ss
+            where auxSum (n, su) s = (n + 1, ((theta h s) - (y s)) ** 2 + su)
+                  (n, su) = foldl' auxSum (0, 0) ss
 
 descend :: Double -> Hypothesis Double -> [Sample Double]
             -> Hypothesis Double
 descend alpha h ss = undefined
 
 gd :: Double -> Hypothesis Double -> [Sample Double]
-    -> [(Integer,Hypothesis Double,Double)]
-gd alpha h ss = undefined
+    -> [(Integer, Hypothesis Double, Double)]
+gd alpha h ss = unfoldr newH (h, 0)
+                where newH (h1, i) = if veryClose (cost h1 ss') (cost h2 ss')
+                             then Nothing
+                             else Just ([i, h2, cost h2 ],(h2, i + 1))
+                             where h2 = descend alpha h1 ss'
+                      ss' = addOnes ss
 
 -- Monoid
 -- foldMap :: (Foldable t, Monoid m) => (a -> m) -> t a -> m
