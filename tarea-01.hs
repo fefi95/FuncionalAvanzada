@@ -83,7 +83,9 @@ theta :: Hypothesis Double -> Sample Double -> Double
 theta h s = sum (zipWith (*) (c h) (x s))
 
 cost :: Hypothesis Double -> [Sample Double] -> Double
-cost h ss = undefined
+cost h ss = su / 2 * n
+            where aux (n, su) s = (n + 1, ((theta h s) - (y s)) ** 2 + su)
+                  (n, su) = foldl' aux (0, 0) ss
 
 descend :: Double -> Hypothesis Double -> [Sample Double]
             -> Hypothesis Double
