@@ -93,15 +93,24 @@ descend alpha h ss = undefined
 
 gd :: Double -> Hypothesis Double -> [Sample Double]
     -> [(Integer, Hypothesis Double, Double)]
+-- gd alpha h ss = undefined
 gd alpha h ss = unfoldr newH (h, 0)
                 where newH (h1, i) = if veryClose (cost h1 ss') (cost h2 ss')
                              then Nothing
-                             else Just ([i, h2, cost h2 ],(h2, i + 1))
+                             else Just ([i, h2, cost h2 ss' ],(h2, i + 1))
                              where h2 = descend alpha h1 ss'
                       ss' = addOnes ss
 
 -- Monoid
--- foldMap :: (Foldable t, Monoid m) => (a -> m) -> t a -> m
+
+newtype Max a = Max { getMax :: a }
+    deriving (Show)
+
+instance (Ord a, Monoid a) => Monoid (Max a) where
+    mempty = Max mempty -- Corregir!!
+    mappend (Max a) (Max b)
+        |a > b = (Max a)
+        |otherwise = (Max b)
 
 -- Zippers
 data Filesystem a = File a | Directory a [Filesystem a]
