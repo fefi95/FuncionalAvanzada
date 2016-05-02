@@ -115,14 +115,19 @@ instance (Ord a, Monoid a) => Monoid (Max a) where
 -- Zippers
 data Filesystem a = File a | Directory a [Filesystem a]
 
-data Breadcrumbs a = Hola a
+data Crumb a = Crumb a [Filesystem a]
+
+data Breadcrumbs a = [Crumb a]
 type Zipper a = (Filesystem a, Breadcrumbs a)
 
--- goDown   ::
+goDown :: Zipper a -> Maybe (Zipper a)
 -- goRight  ::
 -- goLeft   ::
 -- goBack   ::
 -- tothetop ::
 -- modify   ::
--- focus    ::
--- defocus  ::
+focus :: Filesystem a -> Zipper a
+focus fs = (fs, [])
+
+defocus  :: Zipper a -> Filesystem a
+defocus (fs, z) = fs
