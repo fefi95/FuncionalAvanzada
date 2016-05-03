@@ -121,11 +121,17 @@ data Breadcrumbs a = C [FsCrumb a]
 
 type Zipper a = (Filesystem a, Breadcrumbs a)
 
--- goDown :: Zipper a -> Maybe (Zipper a)
+goDown :: Zipper a -> Maybe (Zipper a)
+goDown (Directory a (f : hs), C zs) = Just (f, C (Crumb a [] hs : zs))
+goDown _ = Nothing
+
 goRight :: Zipper a -> Maybe (Zipper a)
-goRight (f, C ((Crumb b (fs : fss) hs) : zs)) = Just (fs, C (Crumb b fss (f : hs)): zs)
+goRight (f, C ((Crumb a (fs : fss) hs) : zs)) = Just (fs, C (Crumb a fss (f : hs) : zs))
+goRight _ = Nothing
 
 goLeft :: Zipper a -> Maybe (Zipper a)
+goLeft (f, C ((Crumb a fss (fs : hs)) : zs)) = Just (fs, C (Crumb a (f : fss) hs : zs))
+goLeft _ = Nothing
 
 goBack :: Zipper a -> Maybe (Zipper a)
 goBack (f, C ((Crumb a fss hs) : zs)) = Just (Directory a (fss ++ [f] ++ hs), C zs)
