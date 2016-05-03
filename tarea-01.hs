@@ -115,19 +115,27 @@ instance (Ord a, Monoid a) => Monoid (Max a) where
 -- Zippers
 data Filesystem a = File a | Directory a [Filesystem a]
 
-data Crumb a = Crumb a [Filesystem a]
+data FsCrumb a = Crumb a [Filesystem a] [Filesystem a]
 
-data Breadcrumbs a = [Crumb a]
+data Breadcrumbs a = C [FsCrumb a]
+
 type Zipper a = (Filesystem a, Breadcrumbs a)
 
-goDown :: Zipper a -> Maybe (Zipper a)
--- goRight  ::
--- goLeft   ::
--- goBack   ::
+-- goDown :: Zipper a -> Maybe (Zipper a)
+goRight :: Zipper a -> Maybe (Zipper a)
+goRight (f, C ((Crumb b (fs : fss) hs) : zs)) = Just (fs, C (Crumb b fss (f : hs)): zs)
+
+goLeft :: Zipper a -> Maybe (Zipper a)
+
+goBack :: Zipper a -> Maybe (Zipper a)
+goBack (f, C ((Crumb a fss hs) : zs)) = Just (Directory a (fss ++ [f] ++ hs), C zs)
+goBack _ = Nothing
+
 -- tothetop ::
 -- modify   ::
+
 focus :: Filesystem a -> Zipper a
-focus fs = (fs, [])
+focus fs = (fs, C [])
 
 defocus  :: Zipper a -> Filesystem a
 defocus (fs, z) = fs
