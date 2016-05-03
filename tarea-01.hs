@@ -89,12 +89,11 @@ cost h ss = su / 2 * n
 
 descend :: Double -> Hypothesis Double -> [Sample Double]
             -> Hypothesis Double
-descend alpha h ss = Hypothesis (foldl' iterJ [] (c h))
-                     where iterJ ts ht = (ht - fst (iterI xj ss)) : ts
-                           iterI xss = foldl' sumI (0, (xss, 0))
-                           sumI (su, ([], l)) s = (su, ([], l))
-                           sumI (su, ((x : xs) : xss, l)) s = (su + ((theta h s) - y s) * x, (xs : xss, l + 1 ))
-                           xj = map x ss
+descend alpha h ss = Hypothesis (fst (foldl' iterJ ([], 0) (c h)))
+                     where iterJ (th', j) th = (th - (alpha/m)* s : th', j + 1)
+                                where (s, m) = iterI j ss
+                           iterI j = foldl' sumI (0, 0)
+                                where sumI (su, l) s = (su + ((theta h s) - (y s)) * ((x s)!! j) , l + 1 )
 
 gd :: Double -> Hypothesis Double -> [Sample Double]
     -> [(Integer, Hypothesis Double, Double)]
