@@ -92,12 +92,12 @@ descend :: Double -> Hypothesis Double -> [Sample Double]
 descend alpha h ss = Hypothesis (foldl' iterJ [] (c h))
                      where iterJ ts ht = (ht - fst (iterI xj ss)) : ts
                            iterI xss = foldl' sumI (0, (xss, 0))
-                           sumI (su,((x : xs) : xss, l)) s = (su + ((theta h s) - y s) * x, (xs : xss, l + 1 ))
+                           sumI (su, ([], l)) s = (su, ([], l))
+                           sumI (su, ((x : xs) : xss, l)) s = (su + ((theta h s) - y s) * x, (xs : xss, l + 1 ))
                            xj = map x ss
 
 gd :: Double -> Hypothesis Double -> [Sample Double]
     -> [(Integer, Hypothesis Double, Double)]
--- gd alpha h ss = undefined
 gd alpha h ss = unfoldr newH (h, 0)
                 where newH (h1, i) = if veryClose (cost h1 ss') (cost h2 ss')
                                      then Nothing
