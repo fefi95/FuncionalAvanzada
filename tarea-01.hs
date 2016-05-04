@@ -3,6 +3,7 @@ import Data.Functor
 import Data.Monoid
 import Data.Foldable (foldMap)
 import Data.Tree
+import Data.Maybe (fromJust)
 -- import Graphics.Rendering.Chart.Easy
 -- import Graphics.Rendering.Chart.Backend.Cairo
 
@@ -89,7 +90,7 @@ cost h ss = su / (2 * n)
 
 descend :: Double -> Hypothesis Double -> [Sample Double]
             -> Hypothesis Double
-descend alpha h ss = Hypothesis $ (reverse . fst) (foldl' iterJ ([], 0) (c h)) 
+descend alpha h ss = Hypothesis $ (reverse . fst) (foldl' iterJ ([], 0) (c h))
                      where iterJ (th', j) th = (th - (alpha/m)* s : th', j + 1)
                                 where (s, m) = iterI j ss
                            iterI j = foldl' sumI (0, 0)
@@ -125,26 +126,30 @@ data Breadcrumbs a = C [FsCrumb a]
 type Zipper a = (Filesystem a, Breadcrumbs a)
 
 goDown :: Zipper a -> Maybe (Zipper a)
-goDown (Directory a (f : hs), C zs) = Just (f, C (Crumb a [] hs : zs))
-goDown _ = Nothing
+goDown (Directory a (f : hs), C bs) = Just (f, C (Crumb a [] hs : bs))
+goDown _                            = Nothing
 
 goRight :: Zipper a -> Maybe (Zipper a)
-goRight (f, C ((Crumb a (fs : fss) hs) : zs)) = Just (fs, C (Crumb a fss (f : hs) : zs))
-goRight _ = Nothing
+goRight (f, C ((Crumb a (fs : fss) hs) : bs)) = Just (fs, C (Crumb a fss (f : hs) : bs))
+goRight _                                     = Nothing
 
 goLeft :: Zipper a -> Maybe (Zipper a)
-goLeft (f, C ((Crumb a fss (fs : hs)) : zs)) = Just (fs, C (Crumb a (f : fss) hs : zs))
-goLeft _ = Nothing
+goLeft (f, C ((Crumb a fss (fs : hs)) : bs)) = Just (fs, C (Crumb a (f : fss) hs : bs))
+goLeft _                                     = Nothing
 
 goBack :: Zipper a -> Maybe (Zipper a)
-goBack (f, C ((Crumb a fss hs) : zs)) = Just (Directory a (fss ++ [f] ++ hs), C zs)
-goBack _ = Nothing
+goBack (f, C ((Crumb a fss hs) : bs)) = Just (Directory a (fss ++ [f] ++ hs), C bs)
+goBack _                              = Nothing
 
--- tothetop ::
--- modify   ::
+tothetop :: Zipper a -> Zipper a
+tothetop z = tothetop . fromJust $ goBack z
+
+modify :: (a -> a) -> Zipper a -> Zipper a
+modify g (Directory a fs, bs) = (Directory (g a) fs, bs)
+modify g (File a, bs)         = (File (g a), bs)
 
 focus :: Filesystem a -> Zipper a
 focus fs = (fs, C [])
 
 defocus  :: Zipper a -> Filesystem a
-defocus (fs, z) = fs
+defocus (fs, _) = fs
