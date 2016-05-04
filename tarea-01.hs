@@ -83,13 +83,13 @@ theta :: Hypothesis Double -> Sample Double -> Double
 theta h s = sum (zipWith (*) (c h) (x s))
 
 cost :: Hypothesis Double -> [Sample Double] -> Double
-cost h ss = su / 2 * n
+cost h ss = su / (2 * n)
             where auxSum (n, su) s = (n + 1, ((theta h s) - (y s)) ** 2 + su)
                   (n, su) = foldl' auxSum (0, 0) ss
 
 descend :: Double -> Hypothesis Double -> [Sample Double]
             -> Hypothesis Double
-descend alpha h ss = Hypothesis (fst (foldl' iterJ ([], 0) (c h)))
+descend alpha h ss = Hypothesis $ (reverse . fst) (foldl' iterJ ([], 0) (c h)) 
                      where iterJ (th', j) th = (th - (alpha/m)* s : th', j + 1)
                                 where (s, m) = iterI j ss
                            iterI j = foldl' sumI (0, 0)
