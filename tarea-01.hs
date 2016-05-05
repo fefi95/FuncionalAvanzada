@@ -107,21 +107,22 @@ gd alpha h ss = unfoldr newH (h, 0)
 
 -- Monoid
 
-newtype Max a = Max { getMax :: a }
+newtype Max a = Max { getMax :: Maybe a }
     deriving (Show)
 
-instance (Ord a, Monoid a) => Monoid (Max a) where
-    mempty = Max mempty -- Corregir!!
-    mappend (Max a) (Max b)
-        |a > b = (Max a)
-        |otherwise = (Max b)
+instance Ord a => Monoid (Max a) where
+    mempty = Max Nothing
+    mappend (Max (Just a)) (Max (Just b))
+        |a > b = Max (Just a)
+        |otherwise = Max (Just b)
+    mappend (Max (Just a)) mempty = (Max (Just a))
+    mappend mempty (Max (Just b)) = (Max (Just b))
 
 -- Zippers
-data Filesystem a = File a | Directory a [Filesystem a]
+data Filesystem a = File a | Directory a [Filesystem a] deriving (Show)
 
-data FsCrumb a = Crumb a [Filesystem a] [Filesystem a]
-
-data Breadcrumbs a = C [FsCrumb a]
+data FsCrumb a = Crumb a [Filesystem a] [Filesystem a] deriving (Show)
+data Breadcrumbs a = C [FsCrumb a] deriving (Show)
 
 type Zipper a = (Filesystem a, Breadcrumbs a)
 
@@ -142,6 +143,7 @@ goBack (f, C ((Crumb a fss hs) : bs)) = Just (Directory a (fss ++ [f] ++ hs), C 
 goBack _                              = Nothing
 
 tothetop :: Zipper a -> Zipper a
+tothetop (f, C []) = (f, C [])
 tothetop z = tothetop . fromJust $ goBack z
 
 modify :: (a -> a) -> Zipper a -> Zipper a
@@ -153,3 +155,25 @@ focus fs = (fs, C [])
 
 defocus  :: Zipper a -> Filesystem a
 defocus (fs, _) = fs
+
+myDisk :: Filesystem String
+myDisk =
+    Directory "root"
+        [ File "goat_yelling_like_man.wmv"
+        , File "pope_time.avi"
+        , Directory "pics"
+            [ File "ape_throwing_up.jpg"
+            , File "watermelon_smash.gif"
+            , File "skull_man(scary).bmp"
+            ]
+        , File "dijon_poupon.doc"
+        , Directory "programs"
+            [ File "fartwizard.exe"
+            , File "owl_bandit.dmg"
+            , File "not_a_virus.exe"
+            , Directory "source code"
+                [ File "best_hs_prog.hs"
+                , File "random.hs"
+                ]
+            ]
+        ]
