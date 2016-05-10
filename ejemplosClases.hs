@@ -79,3 +79,15 @@ instance Functor Pair where
 
 -- esta propiedad de puede entender como la composición de funciones en donde
 -- f(g x) = (f . g) x
+
+-------------------------------------------------------------------------------
+-- Clase 03-05-16 (Monads: Writer)
+-------------------------------------------------------------------------------
+runWriter $ (return 42 :: Writer [String] Int)
+=> (42, [])
+
+runWriter $ (return 42 >> tell ["dfsdf"])
+=> ((), ["dfsdf"])
+
+runState (get >>= put (+1)) 41
+=> ((), 42)

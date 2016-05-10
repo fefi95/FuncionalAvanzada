@@ -4,8 +4,8 @@ import Data.Monoid
 import Data.Foldable (foldMap)
 import Data.Tree
 import Data.Maybe (fromJust)
--- import Graphics.Rendering.Chart.Easy
--- import Graphics.Rendering.Chart.Backend.Cairo
+import Graphics.Rendering.Chart.Easy
+import Graphics.Rendering.Chart.Backend.Cairo
 
 data Sample a = Sample { x :: [a], y :: a }
     deriving (Show)
@@ -130,17 +130,22 @@ goDown :: Zipper a -> Maybe (Zipper a)
 goDown (Directory a (f : hs), C bs) = Just (f, C (Crumb a [] hs : bs))
 goDown _                            = Nothing
 
-goRight :: Zipper a -> Maybe (Zipper a)
-goRight (f, C ((Crumb a (fs : fss) hs) : bs)) = Just (fs, C (Crumb a fss (f : hs) : bs))
-goRight _                                     = Nothing
-
 goLeft :: Zipper a -> Maybe (Zipper a)
-goLeft (f, C ((Crumb a fss (fs : hs)) : bs)) = Just (fs, C (Crumb a (f : fss) hs : bs))
+goLeft (f, C ((Crumb a (fs : fss) hs) : bs)) = Just (fs, C (Crumb a fss (f : hs) : bs))
 goLeft _                                     = Nothing
 
+goRight :: Zipper a -> Maybe (Zipper a)
+goRight (f, C ((Crumb a fss (fs : hs)) : bs)) = Just (fs, C (Crumb a (f : fss) hs : bs))
+goRight _                                     = Nothing
+
 goBack :: Zipper a -> Maybe (Zipper a)
-goBack (f, C ((Crumb a fss hs) : bs)) = Just (Directory a (fss ++ [f] ++ hs), C bs)
+goBack (f, C ((Crumb a fss hs) : bs)) = Just (Directory a ((reverse fss) ++ [f] ++ hs), C bs)
 goBack _                              = Nothing
+
+-- goBack (f, C ((Crumb a [] hs) : bs)) = Just (Directory a ([f] ++ hs), C bs)
+-- goBack z @ (f, C ((Crumb a fss hs) : bs)) = (goBack . fromJust) $ goLeft z
+-- goBack _                              = Nothing
+
 
 tothetop :: Zipper a -> Zipper a
 tothetop (f, C []) = (f, C [])
@@ -162,15 +167,12 @@ myDisk =
         [ File "goat_yelling_like_man.wmv"
         , File "pope_time.avi"
         , Directory "pics"
-            [ File "ape_throwing_up.jpg"
-            , File "watermelon_smash.gif"
+            [ File "watermelon_smash.gif"
             , File "skull_man(scary).bmp"
             ]
         , File "dijon_poupon.doc"
         , Directory "programs"
             [ File "fartwizard.exe"
-            , File "owl_bandit.dmg"
-            , File "not_a_virus.exe"
             , Directory "source code"
                 [ File "best_hs_prog.hs"
                 , File "random.hs"
