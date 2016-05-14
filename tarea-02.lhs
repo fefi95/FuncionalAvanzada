@@ -27,6 +27,7 @@
 \definecolor{darkgreen}{rgb}{0,0.6,0.1}
 \definecolor{darkgrey}{rgb}{0.4,0.4,0.4}
 \definecolor{lightgrey}{rgb}{0.95,0.95,0.95}
+\definecolor{lightorange}{rgb}{1,0.85,0.75}
 
 
 
@@ -47,9 +48,9 @@
 
 \title{CI4251 - Programación Funcional Avanzada \\ Tarea 2}
 
-\author{Ernesto Hernández-Novich\\
-86-17791\\
-\href{mailto:emhn@usb.ve}{<emhn@usb.ve>}}
+\author{Stefani Castellanos\\
+11-11394\\
+\href{mailto:scct95@gmail.com}{<scct95@gmail.com>}}
 
 \date{Mayo 12, 2016}
 
@@ -83,12 +84,62 @@ y \texttt{Monad} para el tipo \texttt{Functor~f}.
 \begin{lstlisting}
 
 > instance Functor f => Functor (Bonus f) where
->
+>    fmap g (Malus a)  = Malus (g a)
+>    fmap g (Bonus fa) = Bonus $ fmap (fmap g) fa
+
+\end{lstlisting}
+
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+\textbf{Explicación:} para escribir la instancia de Functor
+es necesario proporcionar una implementación para fmap.\\
+
+Primero notemos que la firma de fmap para nuestro tipo de
+dato es la siguiente: fmap :: (a -> b) -> Bonus f a -> Bonus f b
+por lo tanto tenemos 2 casos, uno para el constructo Malus y
+otro para el constructor bonus.\\
+
+Otro elemento a considerar es que de la firma de la instancia de
+functor Functor f => Functor (Bonus f) podemos deducir que f es
+un functor, es decir, tiene fmap.\\
+
+El primer caso (Malus) es bastante directo, se aplica la función g
+sobre el elemento en a. El segundo caso es más complicado,sabemos
+que dentro de Bonus hay un functor que guarda Bonus f a y esos
+también deben ser modificados por fmap. El fmap más externo aplica
+la función (fmap g) a los elementos que guarda que son del tipo Bonus f a
+que tambíen tiene fmap, a estos le aplicamos g.
+}
+}
+\\
+
+\begin{lstlisting}
+
 > instance Functor f => Applicative (Bonus f) where
->
+
+\end{lstlisting}
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+\textbf{Explicación:}
+}
+}
+\\
+
+\begin{lstlisting}
+
 > instance Functor f => Monad (Bonus f) where
 
 \end{lstlisting}
+
+\noindent
+\colorbox{lightorange}
+{
+    HOLAAAAAAAA
+}
 
 \section*{Práctica obligada}
 
