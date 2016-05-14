@@ -91,3 +91,40 @@ runWriter $ (return 42 >> tell ["dfsdf"])
 
 runState (get >>= put (+1)) 41
 => ((), 42)
+
+-------------------------------------------------------------------------------
+-- Clase 12-05-16 (Monads...)
+-------------------------------------------------------------------------------
+{-# LANGUAGE DeriveDataTypeable #-}
+import Control.Monad
+import Control.Monad.Trans
+import Control.Monad.Exception
+import Data.Char
+import qualified Data.Sequence as DS
+import Data.Typeable
+
+data MyError = BadInput Char
+             | BadLuck
+                deriving (Show, Typeable)
+
+data MyEnv = Env {
+                toQuit :: Char,
+                toExplode :: Int
+             } deriving (Show)
+instance Exception MyError
+main = runExceptionT (execRWST loop 'q' 0) >>=
+    putStrLn . (either show (\(r, b) -> show r ++ " " ++ show b))
+    loop :: RWST MyEnv [Int] Int (ExceptionT IO) ()
+    where loop = do x <- liftIO getChar
+                    q <- asks toQuit
+                    if isSpace x
+                        then loop
+                        else when (x /= q) $ do
+                                when (not (isDigit x) $ throw $ BadInput x)
+                                let n = fromEnum x - fromEnum '0' --Conversion!!
+                                let t = p + n
+                                b <- asks toExplode
+                                when (t == b) $ throw BadLuck
+                                put t
+                                tell [t] --Cambiar a seq
+                                loop
