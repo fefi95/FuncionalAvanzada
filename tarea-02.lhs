@@ -27,7 +27,7 @@
 \definecolor{darkgreen}{rgb}{0,0.6,0.1}
 \definecolor{darkgrey}{rgb}{0.4,0.4,0.4}
 \definecolor{lightgrey}{rgb}{0.95,0.95,0.95}
-\definecolor{lightorange}{rgb}{1,0.85,0.75}
+\definecolor{lightorange}{rgb}{1,0.9,0.8}
 
 
 
@@ -118,6 +118,27 @@ que tambíen tiene fmap, a estos le aplicamos g.
 \begin{lstlisting}
 
 > instance Functor f => Applicative (Bonus f) where
+>     pure = Malus
+>
+>     (Malus g) <*> b  = fmap g b
+>     (Bonus fg) <*> b = Bonus $ fmap (flip (<*>) b) fg
+
+\end{lstlisting}
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+\textbf{Explicación:} Compila!!!! REVISAR!!
+}
+}
+\\
+
+\begin{lstlisting}
+
+> instance Functor f => Monad (Bonus f) where
+>    return = pure
+>
+
 
 \end{lstlisting}
 
@@ -128,18 +149,6 @@ que tambíen tiene fmap, a estos le aplicamos g.
 }
 }
 \\
-
-\begin{lstlisting}
-
-> instance Functor f => Monad (Bonus f) where
-
-\end{lstlisting}
-
-\noindent
-\colorbox{lightorange}
-{
-    HOLAAAAAAAA
-}
 
 \section*{Práctica obligada}
 
