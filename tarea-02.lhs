@@ -27,7 +27,7 @@
 \definecolor{darkgreen}{rgb}{0,0.6,0.1}
 \definecolor{darkgrey}{rgb}{0.4,0.4,0.4}
 \definecolor{lightgrey}{rgb}{0.95,0.95,0.95}
-\definecolor{lightorange}{rgb}{1,0.9,0.8}
+\definecolor{lightorange}{rgb}{1,0.94,0.9}
 
 
 
@@ -93,24 +93,23 @@ y \texttt{Monad} para el tipo \texttt{Functor~f}.
 \noindent
 \colorbox{lightorange}{
 \parbox{\linewidth}{
-\textbf{Explicación:} para escribir la instancia de Functor
-es necesario proporcionar una implementación para fmap.\\
+\textbf{Explicación:} para escribir la instancia de \texttt{Functor}
+es necesario proporcionar una implementación para \texttt{fmap}.\\
 
-Primero notemos que la firma de fmap para nuestro tipo de
-dato es la siguiente: fmap :: (a -> b) -> Bonus f a -> Bonus f b
-por lo tanto tenemos 2 casos, uno para el constructo Malus y
-otro para el constructor bonus.\\
+Primero notemos que la firma de \texttt{fmap} para nuestro tipo de
+dato es la siguiente: \texttt{fmap :: (a -> b) -> Bonus f a -> Bonus f b}
+por lo tanto tenemos 2 casos, uno para el constructo \texttt{Malus} y
+otro para el constructor \texttt{Bonus}.\\
 
 Otro elemento a considerar es que de la firma de la instancia de
-functor Functor f => Functor (Bonus f) podemos deducir que f es
-un functor, es decir, tiene fmap.\\
+Functor \texttt{Functor f => Functor (Bonus f)} podemos deducir que f es
+un functor, es decir, tiene \texttt{fmap}.\\
 
-El primer caso (Malus) es bastante directo, se aplica la función g
-sobre el elemento en a. El segundo caso es más complicado,sabemos
-que dentro de Bonus hay un functor que guarda Bonus f a y esos
-también deben ser modificados por fmap. El fmap más externo aplica
-la función (fmap g) a los elementos que guarda que son del tipo Bonus f a
-que tambíen tiene fmap, a estos le aplicamos g.
+El primer caso (\texttt{Malus}) es bastante directo, se aplica la función \texttt{g}
+sobre el elemento en \texttt{a}. El segundo caso es más complicado, sabemos
+que dentro de \texttt{Bonus} hay un functor que guarda \texttt{Bonus f a} y esos
+también deben ser modificados por \texttt{fmap}. El \texttt{fmap} más externo aplica
+la función \texttt{(fmap g)} a los elementos que guarda y a estos les aplicamos \texttt{g}.
 }
 }
 \\
@@ -128,7 +127,21 @@ que tambíen tiene fmap, a estos le aplicamos g.
 \noindent
 \colorbox{lightorange}{
 \parbox{\linewidth}{
-\textbf{Explicación:} Compila!!!! REVISAR!!
+\textbf{Explicación:} para proporcionar la instancia de \texttt{Applicative} es
+necesario implementar las funciones \texttt{pure} y \texttt{(<*>)}. La función \texttt{pure}
+es igual a \texttt{Malus}, ya que introduce un elemento en el Functor. Note que la
+función está escrita en punto fijo.\\
+
+\texttt{(<*>)} debe tomar una función dentro del \texttt{Applicative} y ``aplicársela''
+a un elemento en contexto, su firma es:\\
+\texttt{(<*>) :: Bonus f (a -> b) -> Bonus f a -> Bonus f b}
+muy parecida a la de fmap, por lo que la escribimos en términos de fmap.\\
+
+El primer caso, si \texttt{g} está dentro de \texttt{Malus} se debe "levantar"
+la función y aplicarla al segundo argumento. En el segundo caso la
+función debe ser aplicada a cada elemento dentro del \texttt{Functor f},
+que es de tipo\\ \texttt{Bonus f (a -> b)}, para eso usamos \texttt{fmap} y
+aplicamos las funciones al segundo argumento \texttt{b}.
 }
 }
 \\
@@ -146,7 +159,13 @@ que tambíen tiene fmap, a estos le aplicamos g.
 \noindent
 \colorbox{lightorange}{
 \parbox{\linewidth}{
-\textbf{Explicación:}
+\textbf{Explicación:} una vez implementados la instancias de \texttt{Functor}
+y \texttt{Applicative}, la de \texttt{Monad} es directa debemos implementar \texttt{return}
+y \texttt{(>$>$=)}. \texttt{return} nos más que otro nombre para \texttt{pure}.\\
+
+Para implementar \texttt{(>=)} seguimos el razomiento para \texttt{(<*>)} teniendo en
+cuenta que la firma de \texttt{Bind} es:\\
+\texttt{(>=) :: Bonus f a -> (a -> Bonus f b) -> Bonus f b}.
 }
 }
 \\
