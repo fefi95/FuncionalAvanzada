@@ -138,7 +138,8 @@ que tambíen tiene fmap, a estos le aplicamos g.
 > instance Functor f => Monad (Bonus f) where
 >    return = pure
 >
-
+>    (Malus a) >>= f  = f a
+>    (Bonus fa) >>= f = Bonus $ fmap (flip (>>=) f) fa
 
 \end{lstlisting}
 
