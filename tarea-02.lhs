@@ -76,7 +76,11 @@
 \begin{lstlisting}
 
 > import Control.Applicative
-> import Control.Monad.State
+> import qualified Data.Sequence as DS
+> import Control.Monad
+> import Control.Monad.Trans
+> import Control.Monad.Trans.RWS
+> --import Control.Monad.Exception
 > import Data.Char
 > import Data.Sequence as DS
 > import Data.Foldable as DF
@@ -338,12 +342,13 @@ Al reescribirla, incorpore las siguientes restricciones:
 >    drw :: DS.Seq Figure
 > } deriving (Show)
 >
+> type LogoRWSE = RWS [Int] [Int] LogoState ()
 > {- @noop@ -- Transformación de estado que no hace nada -}
-> noop :: State LogoState ()
+> noop :: LogoRWSE
 > noop = return ()
 >
 > {- @pu@ -- Transformación de estado para subir el lápiz -}
-> pu :: State LogoState ()
+> pu :: LogoRWSE
 > pu = do
 >   s <- get
 >   case pns s of
@@ -356,7 +361,7 @@ Al reescribirla, incorpore las siguientes restricciones:
 >     Up   -> put $ s
 >
 > {- @pd@ -- Transformación de estado para bajar el lápiz -}
-> pd :: State LogoState ()
+> pd :: LogoRWSE
 > pd = do
 >   s <- get
 >   case pns s of
@@ -364,13 +369,13 @@ Al reescribirla, incorpore las siguientes restricciones:
 >     Up   -> put $ s { pns = Down, drw = (drw s) |> Empty }
 >
 > {- @pd@ -- Transformación de estado para cambiar el color del lápiz -}
-> pc :: String -> State LogoState ()
+> pc :: String -> LogoRWSE
 > pc c = do
 >   s <- get
 >   put $ s { pnc = toColor c }
 >
 > {- @say@ -- Transformación de estado para emitir mensaje de texto -}
-> say :: String -> State LogoState ()
+> say :: String -> LogoRWSE
 > say m = do
 >   s <- get
 >   case pns s of
@@ -382,11 +387,11 @@ Al reescribirla, incorpore las siguientes restricciones:
 >     Up   -> put $ s
 >
 > {- @fd@ -- Transformación de estado para avanzar @n@ pasos -}
-> fd :: Int -> State LogoState ()
+> fd :: Int -> LogoRWSE
 > fd n = get >>= put . moveForward n
 >
 > {- @bk@ -- Transformación de estado para retroceder @n@ pasos -}
-> bk :: Int -> State LogoState ()
+> bk :: Int -> LogoRWSE
 > bk n = get >>= put . moveForward (negate n)
 >
 > {- @moveForward@ -- Función auxiliar para @fd@ y @bk@ encargada
@@ -416,11 +421,11 @@ Al reescribirla, incorpore las siguientes restricciones:
 >   in (nx,ny)
 >
 > {- @lt@ -- Transformación de estado para girar @n@ grados a la izquierda -}
-> lt :: Int -> State LogoState ()
+> lt :: Int -> LogoRWSE
 > lt n = get >>= put . turnLeft n
 >
 > {- @rt@ -- Transformación de estado para girar @n@ grados a la derecha -}
-> rt :: Int -> State LogoState ()
+> rt :: Int -> LogoRWSE
 > rt n = get >>= put . turnLeft (negate n)
 >
 > {- @turnLeft@ -- Función auxiliar para @lt@ y @rt@ encargada de calcular
@@ -429,11 +434,11 @@ Al reescribirla, incorpore las siguientes restricciones:
 > turnLeft n s = s { dir = (dir s + n) `mod` 360 }
 >
 > {- @home@ -- Transformación de estado para regresar al estado inicial -}
-> home :: State LogoState ()
+> home :: LogoRWSE
 > home = put $ initial
 >
 > {- @goHome@ -- Transformación de estado para regrear al origen -}
-> goHome :: State LogoState ()
+> goHome :: LogoRWSE
 > goHome = do
 >   s <- get
 >   put $ s { pos = (0,0), dir = 90 }
@@ -448,7 +453,7 @@ Al reescribirla, incorpore las siguientes restricciones:
 >
 > {- @repN@ -- Transformación de estado para repetir @n@ veces
 >    una transformación de estado particular. -}
-> repN :: Int -> State LogoState () -> State LogoState ()
+> repN :: Int -> LogoRWSE -> LogoRWSE
 > repN 0 p = noop
 > repN n p = p >> (repN (pred n) p)
 >
@@ -492,7 +497,7 @@ Al reescribirla, incorpore las siguientes restricciones:
 >             f (Text c p s) = G.withColor c $ G.text (fix p) s
 >             (x0,y0)        = origin w h
 >             fix (x,y)      = (x0 + x, y0 - y)
->         in DF.toList $ fmap f (drw (execState (monadicPlot p) initial))
+>         in DF.toList $ fmap f (drw (fst (execRWS (monadicPlot p) [1] initial))) --cualquier cosa
 >         )
 >       G.getKey window
 >       G.closeWindow window
