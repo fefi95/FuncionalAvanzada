@@ -75,6 +75,8 @@
 
 \begin{lstlisting}
 
+> {-# LANGUAGE DeriveDataTypeable #-}
+>
 > import Control.Applicative
 > import qualified Data.Sequence as DS
 > import Control.Monad
@@ -86,6 +88,8 @@
 > import Data.Foldable as DF
 > import qualified Data.Map as DM
 > import qualified Graphics.HGL as G
+> import Data.Typeable
+
 
 \end{lstlisting}
 
@@ -283,13 +287,33 @@ Al reescribirla, incorpore las siguientes restricciones:
 >     (Seq l)   -> j (fmap (foldLP a b c d e f g h i j k) l)
 >     (Rep n l) -> k n (fmap (foldLP a b c d e f g h i j k) l)
 >
+
+\end{lstlisting}
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Para mayor claridad se introduce el tipo de dato \texttt{MyColors}
+que representará el ambiente de lectura del Monad RWS.
+}
+}
+\\
+
+\begin{lstlisting}
+
+> type MyColors = DM.Map String G.Color
+
+\end{lstlisting}
+
+\begin{lstlisting}
+
 > {-
 >   @validColors@ es un valor constante que produce una tabla con los
 >   colores válidos de la Máquina Virtual Logo, utilizando cadenas
 >   alfanuméricas como clave de búsqueda.
 > -}
 >
-> validColors :: DM.Map String G.Color
+> validColors :: MyColors
 > validColors = DM.fromList [
 >                 ( "black",   G.Black   ),
 >                 ( "red",     G.Red     ),
@@ -313,7 +337,20 @@ Al reescribirla, incorpore las siguientes restricciones:
 >       Just c  -> c
 >       Nothing -> error $ "'" ++ s ++ "' es un color invalido"
 >   where f = DM.lookup (map toLower s) validColors
->
+
+\end{lstlisting}
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+\texttt{LogoState} constituye el tipo de dato que representará
+el estado del Monad RWS.
+}
+}
+\\
+
+\begin{lstlisting}
+
 > {-
 >    @Figure@ persigue modelar la geometría generada por la
 >    interpretación apoyándose solamente en los polígonos y texto.
@@ -322,7 +359,7 @@ Al reescribirla, incorpore las siguientes restricciones:
 >    primitiva de texto.
 >  -}
 > data Figure = Poly G.Color [G.Point]
-> 			| Text G.Color G.Point String
+>             | Text G.Color G.Point String
 >             | Empty
 >             deriving (Show,Eq)
 >
@@ -342,7 +379,60 @@ Al reescribirla, incorpore las siguientes restricciones:
 >    drw :: DS.Seq Figure
 > } deriving (Show)
 >
-> type LogoRWSE = RWS [Int] [Int] LogoState ()
+
+\end{lstlisting}
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+\texttt{MyException} constituye el tipo de dato que representará
+el las excepciones de MiniLogo según lo establecido por el enunciado.
+}
+}
+\\
+
+\begin{lstlisting}
+
+> data MyException = RedAfterGreen -- Rojo después de verde
+>                  | GreenAfterRed -- Verde después de rojo
+>                  | LeftWithRed   -- Ir a la izquierda con rojo
+>                    deriving (Show, Typeable)
+>
+> -- instance Exception MyException
+
+\end{lstlisting}
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+La primera decisión que se debe tomar es el orden en el que
+se colocarán transformadores de \texttt{Monad}s \texttt{RWST},
+\texttt{ExceptionT} y \texttt{IO()}, ya que \texttt{ExceptionT} no
+es ortogonal. Se escoge como "base" de la estructura \texttt{IO()}
+porque la librería gráfica es de este tipo. Sobre el colocamos
+\texttt{ExceptionT} y luego \texttt{RWST} puesto que "Si ocurrió un error,
+no interesa el estado de la simulación'' y si intercambiamos estos,
+el estado de la simulación será mostrado al ocurrir una excepción. \\
+
+En cuanto al \texttt{RWST} es evidente que necesitamos un ambiente
+de lectura, uno de escritura y un estado (en ese orden). Para el
+ambiente de lectura nos interesa tener los colores válidos ya que
+estos no pueden cambiar durante la ejecución del programa. ............
+Y por último, para el estado utilizamos LogoState para saber como va
+el dibujo actual.\\
+MONTARE RWS SOBRE EXCEPTION Y ESTE SOBRE IO!
+}
+}
+\\
+
+\begin{lstlisting}
+
+> type LogoRWSE = RWS MyColors (DS.Seq LogoProgram) LogoState () -- (ExceptionT IO())
+
+\end{lstlisting}
+
+\begin{lstlisting}
+
 > {- @noop@ -- Transformación de estado que no hace nada -}
 > noop :: LogoRWSE
 > noop = return ()
@@ -497,7 +587,7 @@ Al reescribirla, incorpore las siguientes restricciones:
 >             f (Text c p s) = G.withColor c $ G.text (fix p) s
 >             (x0,y0)        = origin w h
 >             fix (x,y)      = (x0 + x, y0 - y)
->         in DF.toList $ fmap f (drw (fst (execRWS (monadicPlot p) [1] initial))) --cualquier cosa
+>         in DF.toList $ fmap f (drw (fst (execRWS (monadicPlot p) validColors initial)))
 >         )
 >       G.getKey window
 >       G.closeWindow window
