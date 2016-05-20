@@ -76,20 +76,21 @@
 \begin{lstlisting}
 
 > {-# LANGUAGE DeriveDataTypeable #-}
+> {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+> {-# LANGUAGE UndecidableInstances #-}
 >
 > import Control.Applicative
 > import qualified Data.Sequence as DS
 > import Control.Monad
 > import Control.Monad.Trans
 > import Control.Monad.Trans.RWS
-> --import Control.Monad.Exception
+> import Control.Monad.Exception
 > import Data.Char
 > import Data.Sequence as DS
 > import Data.Foldable as DF
 > import qualified Data.Map as DM
 > import qualified Graphics.HGL as G
 > import Data.Typeable
-
 
 \end{lstlisting}
 
@@ -101,6 +102,12 @@ puede ser \emph{cualquier} \texttt{Functor}.
 
 > data Bonus f a = Malus a
 >                | Bonus (f (Bonus f a))
+>
+> instance (Show a, Show (f (Bonus f a))) => Show (Bonus f a) where
+>     showsPrec d (Malus a) = showParen (d > 10) $
+>         showString "Malus " . showsPrec 11 a
+>     showsPrec d (Bonus m) = showParen (d > 10) $
+>         showString "Bonus " . showsPrec 11 m
 
 \end{lstlisting}
 
@@ -398,7 +405,7 @@ el las excepciones de MiniLogo según lo establecido por el enunciado.
 >                  | LeftWithRed   -- Ir a la izquierda con rojo
 >                    deriving (Show, Typeable)
 >
-> -- instance Exception MyException
+> instance Exception MyException
 
 \end{lstlisting}
 
@@ -409,7 +416,7 @@ La primera decisión que se debe tomar es el orden en el que
 se colocarán transformadores de \texttt{Monad}s \texttt{RWST},
 \texttt{ExceptionT} y \texttt{IO()}, ya que \texttt{ExceptionT} no
 es ortogonal. Se escoge como "base" de la estructura \texttt{IO()}
-porque la librería gráfica es de este tipo. Sobre el colocamos
+porque la librería gráfica es de este tipo. Sobre él colocamos
 \texttt{ExceptionT} y luego \texttt{RWST} puesto que "Si ocurrió un error,
 no interesa el estado de la simulación'' y si intercambiamos estos,
 el estado de la simulación será mostrado al ocurrir una excepción. \\
@@ -427,7 +434,7 @@ MONTARE RWS SOBRE EXCEPTION Y ESTE SOBRE IO!
 
 \begin{lstlisting}
 
-> type LogoRWSE = RWS MyColors (DS.Seq LogoProgram) LogoState () -- (ExceptionT IO())
+> type LogoRWSE = RWST MyColors (DS.Seq LogoState) LogoState (ExceptionT IO) ()
 
 \end{lstlisting}
 
@@ -462,6 +469,8 @@ MONTARE RWS SOBRE EXCEPTION Y ESTE SOBRE IO!
 > pc :: String -> LogoRWSE
 > pc c = do
 >   s <- get
+>   when (c == "red" && pnc s == G.Green) $ throw $ RedAfterGreen
+>   when (c == "green" && pnc s == G.Red) $ throw $ GreenAfterRed
 >   put $ s { pnc = toColor c }
 >
 > {- @say@ -- Transformación de estado para emitir mensaje de texto -}
@@ -582,12 +591,13 @@ MONTARE RWS SOBRE EXCEPTION Y ESTE SOBRE IO!
 > runLogoProgram w h t p =
 >     G.runGraphics $ do
 >       window <- G.openWindow t (w,h)
+>       lgSt <- runExceptionT (execRWST (monadicPlot p) validColors initial)
 >       G.drawInWindow window $ G.overGraphics (
 >         let f (Poly c p)   = G.withColor c $ G.polyline (map fix p)
 >             f (Text c p s) = G.withColor c $ G.text (fix p) s
 >             (x0,y0)        = origin w h
 >             fix (x,y)      = (x0 + x, y0 - y)
->         in DF.toList $ fmap f (drw (fst (execRWS (monadicPlot p) validColors initial)))
+>         in DF.toList $ fmap f (either (\s -> DS.empty) (drw . fst) lgSt)
 >         )
 >       G.getKey window
 >       G.closeWindow window
@@ -604,7 +614,7 @@ RECUERDA QUITAR ESTOOOOOOOOOOOOOOOOOOOOOOOOOO
 > a = Seq $ DS.fromList [
 >         Pd, Fd 100,
 >         Pc "Red", Rt 90, Fd 100,
->         Pc "Yellow", Rt 90, Fd 100, Rt 90, Fd 100,
+>         Pc "Green", Rt 90, Fd 100, Rt 90, Fd 100,
 >         Pc "Blue", Rt 135, Fd 142,
 >         Pu, Rt 135, Fd 200,
 >         Pd, Pc "Green", Fd 10
@@ -644,7 +654,7 @@ RECUERDA QUITAR ESTOOOOOOOOOOOOOOOOOOOOOOOOOO
 >         Fd 150, Rt 90, Fd 150, Rep 4 $ DS.fromList [ Rt 90, Fd 300 ]
 >     ]
 >
-> main = runLogoProgram 400 400 "Test" d
+> main = runLogoProgram 400 400 "Test" a
 
 \end{lstlisting}
 \section*{Can I has pizza?}
