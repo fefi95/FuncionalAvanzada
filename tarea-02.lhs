@@ -434,7 +434,7 @@ MONTARE RWS SOBRE EXCEPTION Y ESTE SOBRE IO!
 
 \begin{lstlisting}
 
-> type LogoRWSE = RWST MyColors (DS.Seq LogoState) LogoState (ExceptionT IO) ()
+> type LogoRWSE = RWST MyColors (DS.Seq Figure) LogoState (ExceptionT IO) ()
 
 \end{lstlisting}
 
@@ -449,7 +449,8 @@ MONTARE RWS SOBRE EXCEPTION Y ESTE SOBRE IO!
 > pu = do
 >   s <- get
 >   case pns s of
->     Down -> put $ s { pns = Up, drw = drw' }
+>     Down -> do put $ s { pns = Up, drw = drw' }
+>                tell drw'
 >             where drw' = case d of
 >                            (ds :> Empty) -> ds
 >                            _             -> drw s
@@ -463,7 +464,8 @@ MONTARE RWS SOBRE EXCEPTION Y ESTE SOBRE IO!
 >   s <- get
 >   case pns s of
 >     Down -> put $ s
->     Up   -> put $ s { pns = Down, drw = (drw s) |> Empty }
+>     Up   -> do put $ s { pns = Down, drw = (drw s) |> Empty }
+>                tell $ (drw s) |> Empty
 >
 > {- @pd@ -- Transformación de estado para cambiar el color del lápiz -}
 > pc :: String -> LogoRWSE
@@ -479,32 +481,39 @@ MONTARE RWS SOBRE EXCEPTION Y ESTE SOBRE IO!
 >   s <- get
 >   case pns s of
 >     Down -> case d of
->               (ds :> Empty) -> put $ s { drw = ds      |> t }
->               _             -> put $ s { drw = (drw s) |> t }
+>               (ds :> Empty) -> do put $ s { drw = ds      |> t }
+>                                   tell $ ds |> t
+>               _             -> do put $ s { drw = (drw s) |> t }
+>                                   tell $ (drw s) |> t
 >             where d = DS.viewr $ drw s
 >                   t = Text (pnc s) (pos s) m
 >     Up   -> put $ s
 >
 > {- @fd@ -- Transformación de estado para avanzar @n@ pasos -}
 > fd :: Int -> LogoRWSE
-> fd n = get >>= put . moveForward n
+> fd n = get >>= moveForward n
 >
 > {- @bk@ -- Transformación de estado para retroceder @n@ pasos -}
 > bk :: Int -> LogoRWSE
-> bk n = get >>= put . moveForward (negate n)
+> bk n = get >>= moveForward (negate n)
 >
 > {- @moveForward@ -- Función auxiliar para @fd@ y @bk@ encargada
 >    de calcular el desplazamiento en la dirección actual, posiblemente
 >    generando la geometría asociada. -}
-> moveForward :: Int -> LogoState -> LogoState
-> moveForward n s | pns s == Up = s { pos = move (pos s) n (dir s) }
+>
+> moveForward :: Int -> LogoState -> LogoRWSE
+> moveForward n s | pns s == Up = put $ s { pos = move (pos s) n (dir s) }
 > moveForward n s =
 >   case d of
->     (ds :> Empty)     -> s { pos = np, drw = ds |> t}
+>     (ds :> Empty)     -> do put $ s { pos = np, drw = ds |> t}
+>                             tell $ ds |> t
 >     (ds :> Poly pc l) -> if (pc == cc)
->                          then s { pos = np, drw = ds |> Poly cc (np:l)  }
->                          else s { pos = np, drw = drw s |> t  }
->     _                 -> s { pos = np, drw = drw s |> t  }
+>                          then do put $ s { pos = np, drw = ds |> Poly cc (np:l) }
+>                                  tell $ ds |> Poly cc (np:l)
+>                          else do put $ s { pos = np, drw = drw s |> t }
+>                                  tell $ drw s |> t
+>     _                 -> do put $ s { pos = np, drw = drw s |> t }
+>                             tell $ drw s |> t
 >     where cc = pnc s
 >           cp = pos s
 >           d  = DS.viewr $ drw s
@@ -564,6 +573,17 @@ MONTARE RWS SOBRE EXCEPTION Y ESTE SOBRE IO!
 >   where seq s   = if DS.null s then noop else DF.sequence_ s
 >         rep n s = repN n (seq s)
 >
+> deleteLastStep :: LogoProgram -> LogoProgram
+> deleteLastStep (Seq p) = case viewr p of
+>                               EmptyR -> Seq p
+>                               p' :> a -> Seq p'
+> deleteLastStep p              = Seq DS.empty
+>
+> repeatLastStep :: LogoProgram -> LogoProgram
+> repeatLastStep (Seq p) = case viewr p of
+>                               EmptyR -> Seq p
+>                               p' :> a -> Seq $ p |> a
+> repeatLastStep p       = Seq $ DS.fromList [p, p]
 > {-|
 >   La función @runLogoProgram@ interpreta un programa escrito con
 >   las instrucciones de la Máquina Logo, produciendo la salida
@@ -591,16 +611,22 @@ MONTARE RWS SOBRE EXCEPTION Y ESTE SOBRE IO!
 > runLogoProgram w h t p =
 >     G.runGraphics $ do
 >       window <- G.openWindow t (w,h)
->       lgSt <- runExceptionT (execRWST (monadicPlot p) validColors initial)
->       G.drawInWindow window $ G.overGraphics (
->         let f (Poly c p)   = G.withColor c $ G.polyline (map fix p)
->             f (Text c p s) = G.withColor c $ G.text (fix p) s
->             (x0,y0)        = origin w h
->             fix (x,y)      = (x0 + x, y0 - y)
->         in DF.toList $ fmap f (either (\s -> DS.empty) (drw . fst) lgSt)
->         )
->       G.getKey window
->       G.closeWindow window
+>       runAux w h t p window
+>       where runAux w h t p window = do
+>             lgSt <- runExceptionT (execRWST (monadicPlot p) validColors initial)
+>             either print (draw window) lgSt
+>             c <- G.getKey window
+>             when (G.keyToChar c == 'a') $ G.clearWindow window >> runAux w h t (deleteLastStep p) window
+>             when (G.keyToChar c == 's') $ G.clearWindow window >> runAux w h t (repeatLastStep p) window
+>             G.closeWindow window
+>                 where draw w lgst = G.drawInWindow w $ G.overGraphics (
+>                                   DF.toList $ fmap f ((DS.filter (/=Empty) . snd) lgst)
+>                                   )
+>                       f (Poly c p)   = G.withColor c $ G.polyline (map fix p)
+>                       f (Text c p s) = G.withColor c $ G.text (fix p) s
+>                       (x0,y0)        = origin w h
+>                       fix (x,y)      = (x0 + x, y0 - y)
+>
 >
 > origin w h = (half w, half h)
 >              where
@@ -654,7 +680,7 @@ RECUERDA QUITAR ESTOOOOOOOOOOOOOOOOOOOOOOOOOO
 >         Fd 150, Rt 90, Fd 150, Rep 4 $ DS.fromList [ Rt 90, Fd 300 ]
 >     ]
 >
-> main = runLogoProgram 400 400 "Test" a
+> main = runLogoProgram 700 700 "Test" a
 
 \end{lstlisting}
 \section*{Can I has pizza?}
@@ -716,7 +742,8 @@ suene difícil o inconcebible, a veces uno simplemente es feliz.
 \begin{lstlisting}
 
 > happy :: Want a
-> happy = undefined
+> happy = Want (\aHappy -> Happy)
+>         where aHappy a = Happy
 
 \end{lstlisting}
 
