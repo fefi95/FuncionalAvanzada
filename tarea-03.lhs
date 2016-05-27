@@ -45,15 +45,23 @@
 
 \title{CI4251 - Programación Funcional Avanzada \\ Tarea 3}
 
-\author{Ernesto Hernández-Novich\\
-86-17791\\
-\href{mailto:emhn@usb.ve}{<emhn@usb.ve>}}
+\author{Stefani Castellanos\\
+11-11394\\
+\href{mailto:scct95@gmail.com}{<scct95@gmail.com>}}
 
-\date{Mayo 26, 2016}
+\date{Junio 1, 2016}
 
 \maketitle
 
 \pagebreak
+
+\begin{lstlisting}
+
+> import Test.QuickCheck
+
+\end{lstlisting}
+
+
 
 \section{\emph{Buffer} de un editor}
 
@@ -67,7 +75,9 @@ posición del cursor en la línea.
 Un modelo muy eficiente para el \emph{buffer} de un editor sería
 
 \begin{lstlisting}
+
 > type Buffer = (String,String)
+
 \end{lstlisting}
 
 \noindent
@@ -84,22 +94,50 @@ Esto es un ejemplo, $\underline{d}$e como opera el buffer
 se modelaría como
 
 \begin{lstlisting}
+
 > ejemplo = (" ,olpmeje nu se otsE","de como opera el buffer")
+
 \end{lstlisting}
 
 \noindent
 Defina las operaciones
 
 \begin{lstlisting}
-> empty      :: Buffer                   -- Buffer nuevo
-> cursor     :: Buffer -> Maybe Char     -- Leer bajo el cursor
-> insert     :: Char -> Buffer -> Buffer -- ...antes del cursor
-> delete     :: Buffer -> Buffer         -- ...anterior al cursor
-> remove     :: Buffer -> Buffer         -- ...bajo al cursor
-> left       :: Buffer -> Buffer         -- Cursor a la izquierda
-> right      :: Buffer -> Buffer         -- Cursor a la derecha
-> atLeft     :: Buffer -> Bool           -- Extremo izquierdo?
-> atRight    :: Buffer -> Bool           -- Extremo derecho?
+
+> empty      :: Buffer                -- Buffer nuevo
+> empty = ([],[])
+>
+> cursor     :: Buffer -> Maybe Char  -- Leer bajo el cursor
+> cursor (_, []) = Nothing
+> cursor (_, rs) = Just $ head rs
+>
+> insert :: Char -> Buffer -> Buffer -- ...antes del cursor
+> insert c (ls, rs) = (c : ls, rs)
+>
+> delete :: Buffer -> Buffer         -- ...anterior al cursor
+> delete b@([], rs)   = b
+> delete (l : ls, rs) = (ls, rs)
+>
+> remove :: Buffer -> Buffer         -- ...bajo al cursor
+> remove b@(ls, [])   = b
+> remove (ls, r : rs) = (ls, rs)
+>
+> left :: Buffer -> Buffer           -- Cursor a la izquierda
+> left b@([], rs)   = b
+> left (l : ls, rs) = (ls, l : rs)
+>
+> right :: Buffer -> Buffer          -- Cursor a la derecha
+> right b@(ls, [])   = b
+> right (ls, r : rs) = (r : ls, rs)
+>
+> atLeft :: Buffer -> Bool           -- Extremo izquierdo?
+> atLeft ([],_) = True
+> atLeft _      = False
+>
+> atRight :: Buffer -> Bool          -- Extremo derecho?
+> atRight (_, []) = True
+> atRight _       = False
+
 \end{lstlisting}
 
 \noindent
@@ -121,6 +159,26 @@ así como \texttt{delete} al principio de la línea, no borra nada.
 Finalmente, queremos mantener la implantación eficiente así que
 debe \emph{evitar} el uso de la concatenación de listas (\verb=++=).
 \\
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Insertar un elemento a un buffer y luego borrarlo debe
+producir el mismo buffer.
+}
+}
+\\
+
+\begin{lstlisting}
+
+> prop_insert_delete :: Buffer -> Char -> Property
+> prop_insert_delete b@(ls, rs) c =
+>   classify (null ls || null rs) "trivial" $
+>   classify (not (null ls || null rs)) "mejor" $
+>   classify (length ls > 19 && length rs > 19) "seria" $
+>   (delete . insert c) b == b
+
+\end{lstlisting}
 
 \pagebreak
 
