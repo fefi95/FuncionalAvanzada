@@ -27,7 +27,7 @@
 \definecolor{darkgreen}{rgb}{0,0.6,0.1}
 \definecolor{darkgrey}{rgb}{0.4,0.4,0.4}
 \definecolor{lightgrey}{rgb}{0.95,0.95,0.95}
-
+\definecolor{lightorange}{rgb}{1,0.94,0.9}
 
 
 \lstset{
@@ -58,6 +58,7 @@
 \begin{lstlisting}
 
 > import Test.QuickCheck
+> import Data.Maybe (fromJust)
 
 \end{lstlisting}
 
@@ -163,6 +164,23 @@ debe \emph{evitar} el uso de la concatenación de listas (\verb=++=).
 \noindent
 \colorbox{lightorange}{
 \parbox{\linewidth}{
+Para ayudar a crear pruebas más generalizadas es útil crear una
+función que permita realizar repetir una acción sobre el buffer n veces.
+}
+}
+\\
+
+\begin{lstlisting}
+
+> repN :: Int -> (Buffer -> Buffer) -> Buffer -> Buffer
+> repN 0 _ b = b
+> repN n f b |n > 0 = repN (n - 1) f (f b)
+
+\end{lstlisting}
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
 Insertar un elemento a un buffer y luego borrarlo debe
 producir el mismo buffer.
 }
@@ -176,10 +194,105 @@ producir el mismo buffer.
 >   classify (null ls || null rs) "trivial" $
 >   classify (not (null ls || null rs)) "mejor" $
 >   classify (length ls > 19 && length rs > 19) "seria" $
->   (delete . insert c) b == b
+>   ((repN 100 delete).(repN 100 (insert c))) b == b
 
 \end{lstlisting}
 
+\begin{lstlisting}
+
+> prop_insert_cursor :: Buffer -> Char -> Property
+> prop_insert_cursor b@(ls, rs) c =
+>   classify (null ls || null rs) "trivial" $
+>   classify (not (null ls || null rs)) "mejor" $
+>   classify (length ls > 19 && length rs > 19) "seria" $
+>   c == fromJust (cursor ((left . insert c) b))
+
+\end{lstlisting}
+
+\begin{lstlisting}
+
+> prop_left_atleft b@(ls, rs) =
+>   classify (null ls || null rs) "trivial" $
+>   classify (not (null ls || null rs)) "mejor" $
+>   classify (length ls > 19 && length rs > 19) "seria" $
+>   atLeft $ repN (length ls) left b
+
+\end{lstlisting}
+
+\begin{lstlisting}
+
+> prop_left_to_original b@(ls, rs) =
+>   classify (null ls || null rs) "trivial" $
+>   classify (not (null ls || null rs)) "mejor" $
+>   classify (length ls > 19 && length rs > 19) "seria" $
+>   (snd . repN (length ls) left) b == (reverse ls) ++ rs
+
+\end{lstlisting}
+
+\begin{lstlisting}
+
+> prop_right_atright b@(ls, rs) =
+>   classify (null ls || null rs) "trivial" $
+>   classify (not (null ls || null rs)) "mejor" $
+>   classify (length ls > 19 && length rs > 19) "seria" $
+>   atRight $ repN (length rs) right b
+
+\end{lstlisting}
+
+\begin{lstlisting}
+
+> prop_right_to_original b@(ls, rs) =
+>   classify (null ls || null rs) "trivial" $
+>   classify (not (null ls || null rs)) "mejor" $
+>   classify (length ls > 19 && length rs > 19) "seria" $
+>   (reverse . fst . repN (length rs) right) b == (reverse ls) ++ rs
+
+\end{lstlisting}
+
+\begin{lstlisting}
+
+> prop_clear_all b@(ls, rs) =
+>   classify (null ls || null rs) "trivial" $
+>   classify (not (null ls || null rs)) "mejor" $
+>   classify (length ls > 19 && length rs > 19) "seria" $
+>   (repN (length ls) delete . repN (length rs) remove) b == empty
+
+\end{lstlisting}
+
+\begin{lstlisting}
+
+> prop_clear_all_left b@(ls, rs) =
+>   classify (null ls || null rs) "trivial" $
+>   classify (not (null ls || null rs)) "mejor" $
+>   classify (length ls > 19 && length rs > 19) "seria" $
+>   (delete . repN (length ls) left) b == repN (length ls) left b
+
+\end{lstlisting}
+
+\begin{lstlisting}
+
+> prop_clear_all_right b@(ls, rs) =
+>   classify (null ls || null rs) "trivial" $
+>   classify (not (null ls || null rs)) "mejor" $
+>   classify (length ls > 19 && length rs > 19) "seria" $
+>   (remove . repN (length rs) right) b == repN (length rs) right b
+
+\end{lstlisting}
+
+\begin{lstlisting}
+
+> main = do
+>   quickCheck prop_insert_delete
+>   quickCheck prop_insert_cursor
+>   quickCheck prop_left_atleft
+>   quickCheck prop_left_to_original
+>   quickCheck prop_right_atright
+>   quickCheck prop_right_to_original
+>   quickCheck prop_clear_all
+>   quickCheck prop_clear_all_left
+>   quickCheck prop_clear_all_right
+
+\end{lstlisting}
 \pagebreak
 
 \section{Uso de \texttt{Parsec}}
