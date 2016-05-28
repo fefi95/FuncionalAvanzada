@@ -59,6 +59,7 @@
 
 > import Test.QuickCheck
 > import Data.Maybe (fromJust)
+> import Text.ParserCombinators.Parsec
 
 \end{lstlisting}
 
@@ -352,5 +353,29 @@ que:
 Su programa debe recibir uno o más nombres de archivo \texttt{.lhs}
 desde la línea de comandos y producir sendos archivos \texttt{.html}
 con los resultados de la transformación.
+
+\begin{lstlisting}
+
+> lhsParser = many paragraph
+>
+> paragraph = endBy line eop
+>
+> line =  h1
+>     <|> h2
+>     <|> code
+>
+> h1 = char '*' >> many (noneOf "\n")
+>
+> h2 = char '#' >> many (noneOf "\n")
+>
+> code = try $ string "> " >> many (noneOf "\n")
+>
+> --p = noneOf "*#" >> many char >> char '\n'
+>
+> eop = char '\n'
+>
+> parseLHS input = parse paragraph "#dfdsffs" input
+
+\end{lstlisting}
 
 \end{document}
