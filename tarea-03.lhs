@@ -60,6 +60,11 @@
 > import Test.QuickCheck
 > import Data.Maybe (fromJust)
 > import Text.ParserCombinators.Parsec
+> import System.IO (readFile, writeFile)
+> import Data.Either (either)
+> import System.Environment (getArgs)
+> import System.IO.Error (catchIOError,
+>        isDoesNotExistError, ioeGetFileName)
 
 \end{lstlisting}
 
@@ -282,7 +287,7 @@ producir el mismo buffer.
 
 \begin{lstlisting}
 
-> main = do
+> main1 = do
 >   quickCheck prop_insert_delete
 >   quickCheck prop_insert_cursor
 >   quickCheck prop_left_atleft
@@ -356,18 +361,34 @@ con los resultados de la transformación.
 
 \begin{lstlisting}
 
-> lhsParser = h1
->         <|> h2
->         <|> p
+> lhsParser =  many lhsContent
+>
+> lhsContent = h1
+>          <|> h2
+>          <|> code
+>          <|> try p
+>          <|> eop
+>
+> h1 = do
+>   blank
+>   char '*'
+>   cs <- line
+>   return $ "<h1>\n" ++ cs ++ "</h1>\n"
+>
+> h2 = do
+>   blank
+>   char '#'
+>   cs <- line
+>   return $ "<h2>\n" ++ cs ++ "</h2>\n"
 >
 > p = do
->   ls <- many line
->   string "\n"
->   return $ concat $ ["<p> "] ++ ls ++ [" </p>"]
+>   ls <- try $ blank >> many line
+>   eop
+>   return $ concat $ ["<p>\n"] ++ ls ++ ["</p>\n"]
 >
 > line :: GenParser Char st String
 > line = do
->   ws <- many word
+>   ws <- many1 word
 >   eop
 >   return $ concat $ ws ++ ["\n"]
 >
@@ -375,35 +396,52 @@ con los resultados de la transformación.
 > word = do
 >   ws <- many1 $ noneOf [' ', '\n']
 >   b <- blank
->    <|> string ""
 >   return $ ws ++ b
 >
 > blank :: GenParser Char st String
-> blank = many1 (char ' ') >> return " "
->
-> h1 = do
->   char '*'
->   cs <- many (noneOf "\n")
->   eop
->   return $ "<h1> " ++ cs ++ " </h1>"
->
-> h2 = do
->   char '#'
->   cs <- many (noneOf "\n")
->   eop
->   return $ "<h2> " ++ cs ++ " </h2>"
+> blank = try (many1 (char ' ') >> return " ")
+>      <|> return ""
 >
 > code = do
 >   ls <- many cLine
 >   eop
->   return $ concat $ ["<code> "] ++ ls ++ [" </code>"]
+>   return $ concat $ ["<code>\n"] ++ ls ++ ["</code>\n"]
 >
 > cLine = string "> " >> line
 >
+> eop = try (string "\n\r")
+>   <|> try (string "\r\n")
+>   <|> string "\n"
+>   <|> string "\r"
+>   <?> "end of line missing"
 >
-> eop = char '\n'
+> parseLHS :: String -> Either ParseError [String]
+> parseLHS input = parse lhsParser "nop" input
 >
-> parseLHS input = parse lhsParser "#dfdsffs" input
+> lhsFile lhs = do
+>   let (fname, ext) = span ((/=) '.') lhs
+>   if (ext /= ".lhs")
+>   then putStrLn $ "Expected an lhs file but got " ++ lhs
+>   else do
+>       putStrLn $ "Converting " ++ lhs ++ " to html..."
+>       tryReadFile lhs fname `catchIOError` hdlReadFile
+>
+> tryReadFile file fname = do
+>       lhscontent <- readFile file
+>       putStrLn lhscontent
+>       let html = fname ++ ".html"
+>       either print (writeFile html . concat) (parseLHS lhscontent)
+>
+> hdlReadFile e
+>   | isDoesNotExistError e =
+>       case ioeGetFileName e of
+>           Just path -> putStrLn $ "File does not exist: " ++ path
+>           Nothing -> putStrLn "File does not exist at unknown location!"
+>   | otherwise = ioError e
+>
+> main = do
+>   args <- getArgs
+>   mapM_ lhsFile args
 
 \end{lstlisting}
 
