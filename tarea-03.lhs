@@ -356,25 +356,54 @@ con los resultados de la transformación.
 
 \begin{lstlisting}
 
-> lhsParser = many paragraph
+> lhsParser = h1
+>         <|> h2
+>         <|> p
 >
-> paragraph = endBy line eop
+> p = do
+>   ls <- many line
+>   string "\n"
+>   return $ concat $ ["<p> "] ++ ls ++ [" </p>"]
 >
-> line =  h1
->     <|> h2
->     <|> code
+> line :: GenParser Char st String
+> line = do
+>   ws <- many word
+>   eop
+>   return $ concat $ ws ++ ["\n"]
 >
-> h1 = char '*' >> many (noneOf "\n")
+> word :: GenParser Char st String
+> word = do
+>   ws <- many1 $ noneOf [' ', '\n']
+>   b <- blank
+>    <|> string ""
+>   return $ ws ++ b
 >
-> h2 = char '#' >> many (noneOf "\n")
+> blank :: GenParser Char st String
+> blank = many1 (char ' ') >> return " "
 >
-> code = try $ string "> " >> many (noneOf "\n")
+> h1 = do
+>   char '*'
+>   cs <- many (noneOf "\n")
+>   eop
+>   return $ "<h1> " ++ cs ++ " </h1>"
 >
-> --p = noneOf "*#" >> many char >> char '\n'
+> h2 = do
+>   char '#'
+>   cs <- many (noneOf "\n")
+>   eop
+>   return $ "<h2> " ++ cs ++ " </h2>"
+>
+> code = do
+>   ls <- many cLine
+>   eop
+>   return $ concat $ ["<code> "] ++ ls ++ [" </code>"]
+>
+> cLine = string "> " >> line
+>
 >
 > eop = char '\n'
 >
-> parseLHS input = parse paragraph "#dfdsffs" input
+> parseLHS input = parse lhsParser "#dfdsffs" input
 
 \end{lstlisting}
 
