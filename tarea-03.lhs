@@ -287,6 +287,16 @@ producir el mismo buffer.
 
 \begin{lstlisting}
 
+> prop_left_to_right b@(ls, rs) =
+>   classify (null ls || null rs) "trivial" $
+>   classify (not (null ls || null rs)) "mejor" $
+>   classify (length ls > 19 && length rs > 19) "seria" $
+>   (repN (length ls) (right . left)) b == b
+
+\end{lstlisting}
+
+\begin{lstlisting}
+
 > main1 = do
 >   quickCheck prop_insert_delete
 >   quickCheck prop_insert_cursor
@@ -297,6 +307,7 @@ producir el mismo buffer.
 >   quickCheck prop_clear_all
 >   quickCheck prop_clear_all_left
 >   quickCheck prop_clear_all_right
+>   quickCheck prop_left_to_right
 
 \end{lstlisting}
 \pagebreak
@@ -372,12 +383,14 @@ con los resultados de la transformación.
 > h1 = do
 >   blank
 >   char '*'
+>   blank
 >   cs <- line
 >   return $ "<h1>\n" ++ cs ++ "</h1>\n"
 >
 > h2 = do
 >   blank
 >   char '#'
+>   blank
 >   cs <- line
 >   return $ "<h2>\n" ++ cs ++ "</h2>\n"
 >
@@ -407,7 +420,11 @@ con los resultados de la transformación.
 >   eop
 >   return $ concat $ ["<code>\n"] ++ ls ++ ["</code>\n"]
 >
-> cLine = string "> " >> line
+> cLine = do
+>   try (string "> ") <|> string ">\n"
+>   ls <- many (noneOf "\n")
+>   eop
+>   return $ ls ++ "\n"
 >
 > eop = try (string "\n\r")
 >   <|> try (string "\r\n")
