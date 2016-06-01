@@ -407,10 +407,16 @@ con los resultados de la transformación.
 >
 > word :: GenParser Char st String
 > word = do
->   ws <- many1 $ noneOf [' ', '\n']
+>   ws <- auxParser
 >   b <- blank
 >   return $ ws ++ b
 >
+> auxParser = do
+>       many1 (noneOf [' ', '\n', '>', '<', '&'])
+>   <|> (string ">" >> return "&lt;")
+>   <|> (string "<" >> return "&gt;")
+>   <|> (string "&" >> return "&amp;")
+
 > blank :: GenParser Char st String
 > blank = try (many1 (char ' ') >> return " ")
 >      <|> return ""
