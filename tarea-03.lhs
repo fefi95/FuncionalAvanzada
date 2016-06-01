@@ -60,14 +60,8 @@
 > import Test.QuickCheck
 > import Data.Maybe (fromJust)
 > import Text.ParserCombinators.Parsec
-> import System.IO (readFile, writeFile)
-> import Data.Either (either)
-> import System.Environment (getArgs)
-> import System.IO.Error (catchIOError,
->        isDoesNotExistError, ioeGetFileName)
 
 \end{lstlisting}
-
 
 
 \section{\emph{Buffer} de un editor}
@@ -187,7 +181,7 @@ función que permita realizar repetir una acción sobre el buffer n veces.
 \noindent
 \colorbox{lightorange}{
 \parbox{\linewidth}{
-Insertar un elemento a un buffer y luego borrarlo debe
+Insertar un n elementos a un buffer y luego borrarlos debe
 producir el mismo buffer.
 }
 }
@@ -200,9 +194,19 @@ producir el mismo buffer.
 >   classify (null ls || null rs) "trivial" $
 >   classify (not (null ls || null rs)) "mejor" $
 >   classify (length ls > 19 && length rs > 19) "seria" $
->   ((repN 100 delete).(repN 100 (insert c))) b == b
+>   repN 100 (delete . insert c) b == b
 
 \end{lstlisting}
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Al insertar un elemento a un buffer y moverse a la izquierda
+leer el elemento sobre el que está posicionado (cursor) debe
+ser el mismo que fue insertado.
+}
+}
+\\
 
 \begin{lstlisting}
 
@@ -215,6 +219,15 @@ producir el mismo buffer.
 
 \end{lstlisting}
 
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Moverse a la izquierda la cantidad de elementos que están
+a la izquierda del cursor debe resultar en quedar "a la izquierda"
+del buffer
+}
+}
+\\
 \begin{lstlisting}
 
 > prop_left_atleft b@(ls, rs) =
@@ -224,6 +237,16 @@ producir el mismo buffer.
 >   atLeft $ repN (length ls) left b
 
 \end{lstlisting}
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Moverse a la izquierda la cantidad de elementos a
+la izquierda del buffer debe resultar en que a
+la derecha tiene toda la información en el orden natural.
+}
+}
+\\
 
 \begin{lstlisting}
 
@@ -235,6 +258,15 @@ producir el mismo buffer.
 
 \end{lstlisting}
 
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Análogo a \texttt{left atleft}.
+
+}
+}
+\\
+
 \begin{lstlisting}
 
 > prop_right_atright b@(ls, rs) =
@@ -244,6 +276,14 @@ producir el mismo buffer.
 >   atRight $ repN (length rs) right b
 
 \end{lstlisting}
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Análogo a \texttt{letf to original}
+}
+}
+\\
 
 \begin{lstlisting}
 
@@ -255,6 +295,16 @@ producir el mismo buffer.
 
 \end{lstlisting}
 
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Eliminar todo lo que está a la izquierda y todo lo que
+está a la derecha del cursor debe resultar en un buffer
+vacío.
+}
+}
+\\
+
 \begin{lstlisting}
 
 > prop_clear_all b@(ls, rs) =
@@ -264,6 +314,16 @@ producir el mismo buffer.
 >   (repN (length ls) delete . repN (length rs) remove) b == empty
 
 \end{lstlisting}
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Moverse a la izquierda tanto elementos y borrar dicho elemento
+es igual a moverse a la izquierda sin borrar nada. Es decir,
+borrar a la izquierda cuando se está allí no produce cambios.
+}
+}
+\\
 
 \begin{lstlisting}
 
@@ -275,6 +335,14 @@ producir el mismo buffer.
 
 \end{lstlisting}
 
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Análogo a \texttt{clear all right}
+}
+}
+\\
+
 \begin{lstlisting}
 
 > prop_clear_all_right b@(ls, rs) =
@@ -285,19 +353,129 @@ producir el mismo buffer.
 
 \end{lstlisting}
 
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Moverse la misma cantidad a la derecha y a la izquierda no produce
+cambios en el buffer, siempre y cuando no se muevan más caracteres
+hacia un lado de los que están.
+}
+}
+\\
+
 \begin{lstlisting}
 
 > prop_left_to_right b@(ls, rs) =
 >   classify (null ls || null rs) "trivial" $
 >   classify (not (null ls || null rs)) "mejor" $
 >   classify (length ls > 19 && length rs > 19) "seria" $
->   (repN (length ls) (right . left)) b == b
+>   repN (length ls) (right . left) b == b
+
+\end{lstlisting}
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Moverse a la izquierda al menos una caracter más que
+la cantidad de elementos a la izquierda es igual
+a moverse exactamente esa cantidad. En otras palabras,
+si ya se está en la izquierda moverse más hacia este
+sentido no produce cambios.
+}
+}
+\\
+\begin{lstlisting}
+
+> prop_left_overflow b@(ls, rs) =
+>   classify (null ls || null rs) "trivial" $
+>   classify (not (null ls || null rs)) "mejor" $
+>   classify (length ls > 19 && length rs > 19) "seria" $
+>   repN (length ls + 1) left b == repN (length ls) left b
+
+\end{lstlisting}
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Análogo al anterior.
+}
+}
+\\
+\begin{lstlisting}
+
+> prop_right_overflow b@(ls, rs) =
+>   classify (null ls || null rs) "trivial" $
+>   classify (not (null ls || null rs)) "mejor" $
+>   classify (length ls > 19 && length rs > 19) "seria" $
+>   repN (length rs + 1) right b == repN (length rs) right b
+
+\end{lstlisting}
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Moverse completamente a la derecha y leer el último caracter
+con \texttt{cursor} debe resultar en \texttt{Nothing}.
+}
+}
+\\
+
+\begin{lstlisting}
+
+> prop_right_cursor b@(ls, rs) =
+>   classify (null ls || null rs) "trivial" $
+>   classify (not (null ls || null rs)) "mejor" $
+>   classify (length ls > 19 && length rs > 19) "seria" $
+>   cursor (repN (length rs) right b) == Nothing
+
+\end{lstlisting}
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Moverse un paso a la derecha sin importar el estado del buffer
+implica que ya no se está "a la izquierda", siempre y cuando el buffer
+no está vacío ya que en este caso el cursor no puede moverse a la derecha.
+
+Para ese caso lo ideal es realizar una prueba unitaria.
+}
+}
+\\
+
+\begin{lstlisting}
+
+> prop_right_atleft b@(ls, rs) =
+>   classify (null rs) "trivial" $
+>   classify (not (null ls || null rs)) "mejor" $
+>   classify (length ls > 19 && length rs > 19) "seria" $
+>   if null ls && null rs
+>   then True --obviar el caso en que ambos son vacios
+>   else not $ atLeft $ right b
+
+\end{lstlisting}
+
+noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Análogo al anterior.
+}
+}
+\\
+\begin{lstlisting}
+
+> prop_left_atright b@(ls, rs) =
+>   classify (null ls ) "trivial" $
+>   classify (not (null ls || null rs)) "mejor" $
+>   classify (length ls > 19 && length rs > 19) "seria" $
+>   if null ls && null rs
+>   then True --obviar el caso en que ambos son vacios
+>   else not $ atRight $ left b
 
 \end{lstlisting}
 
 \begin{lstlisting}
 
-> main1 = do
+> main = do
 >   quickCheck prop_insert_delete
 >   quickCheck prop_insert_cursor
 >   quickCheck prop_left_atleft
@@ -308,164 +486,32 @@ producir el mismo buffer.
 >   quickCheck prop_clear_all_left
 >   quickCheck prop_clear_all_right
 >   quickCheck prop_left_to_right
+>   quickCheck prop_left_overflow
+>   quickCheck prop_right_overflow
+>   quickCheck prop_right_cursor
+>   quickCheck prop_right_atleft
+>   quickCheck prop_left_atright
 
 \end{lstlisting}
-\pagebreak
-
-\section{Uso de \texttt{Parsec}}
 
 \noindent
-Un archivo ``Literate Haskell'' (\texttt{.lhs}) incluye código
-Haskell combinado con texto arbitrario. A efectos de este ejercicio
-supondremos que se trata de texto simple pero se desea convertirlo a
-HTML para su publicación en una página Web. Más aún, se adoptan las
-siguientes convenciones:
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Al correr el main obtenemos:
+99\% expressions used (672/676)\\
+ 66\% boolean coverage (2/3)\\
+       0\% guards (0/1), 1 always True\\
+     100\% 'if' conditions (2/2)\\
+     100\% qualifiers (0/0)\\
+100\% alternatives used (20/20)\\
+100\% local declarations used (0/0)\\
+ 96\% top-level declarations used (26/27)\\
 
-\begin{itemize}
-\item
-  Si una línea comienza con \texttt{*} se trata de un encabezado
-  principal.
-\item
-  Si una línea comienza con \texttt{\#} se trata de un encabezado
-  secundario.
-\item
-  Un párrafo termina cuando haya una línea en blanco.
-\item
-  Si una línea comienza \emph{exactamente} con \texttt{>} seguido
-  de espacio en blanco, se asume que el resto corresponde a texto
-  del programa. Los dos caracteres al principio \textbf{no} deben
-  conservarse.
-\item
-  Los espacios en blanco son irrelevantes salvo el caso anterior.
-  En otras palabras, los espacios en blanco entre palabras,
-  antes del \texttt{*} al comienzo de una línea, etc. han de
-  convertirse en un espacio en blanco sencillo.
-\end{itemize}
-
-\noindent
-Escriba un programa basado en un reconocedor \texttt{Parsec}
-tal que pueda ser utilizado para convertir los archivos \texttt{.lhs}
-con el formato antes descrito hacia HTML válido, tomando en cuenta
-que:
-
-\begin{itemize}
-\item
-  Los encabezados principales y secundarios deben envolverse entre
-  las marcas HTML \texttt{<h1>} y \texttt{<h2>}.
-\item
-  Los párrafos sueltos deben envolverse entre las marcas \texttt{<p>}.
-\item
-  Los segmentos continuos (múltiples líneas seguidas) con código Haskell
-  deben envolverse entre las marcas HTML \texttt{<code>}.
-\item
-  Los símbolos \texttt{<}, \texttt{>} y \texttt{\&} tienen significado
-  especial en HTML, por lo que deben ser convertidos a la entidad
-  correspondiente.
-\item
-  El resto del texto debe ser transportado ``tal cual''.
-\end{itemize}
-
-\noindent
-Su programa debe recibir uno o más nombres de archivo \texttt{.lhs}
-desde la línea de comandos y producir sendos archivos \texttt{.html}
-con los resultados de la transformación.
-
-\begin{lstlisting}
-
-> lhsParser =  many lhsContent
->
-> lhsContent = h1
->          <|> h2
->          <|> code
->          <|> try p
->          <|> eop
->
-> h1 = do
->   blank
->   char '*'
->   blank
->   cs <- line
->   return $ "<h1>\n" ++ cs ++ "</h1>\n"
->
-> h2 = do
->   blank
->   char '#'
->   blank
->   cs <- line
->   return $ "<h2>\n" ++ cs ++ "</h2>\n"
->
-> p = do
->   ls <- try $ blank >> many line
->   eop
->   return $ concat $ ["<p>\n"] ++ ls ++ ["</p>\n"]
->
-> line :: GenParser Char st String
-> line = do
->   ws <- many1 word
->   eop
->   return $ concat $ ws ++ ["\n"]
->
-> word :: GenParser Char st String
-> word = do
->   ws <- auxParser
->   b <- blank
->   return $ ws ++ b
->
-> auxParser = do
->       many1 (noneOf [' ', '\n', '>', '<', '&'])
->   <|> (string ">" >> return "&lt;")
->   <|> (string "<" >> return "&gt;")
->   <|> (string "&" >> return "&amp;")
-
-> blank :: GenParser Char st String
-> blank = try (many1 (char ' ') >> return " ")
->      <|> return ""
->
-> code = do
->   ls <- many cLine
->   eop
->   return $ concat $ ["<code>\n"] ++ ls ++ ["</code>\n"]
->
-> cLine = do
->   try (string "> ") <|> string ">\n"
->   ls <- many (noneOf "\n")
->   eop
->   return $ ls ++ "\n"
->
-> eop = try (string "\n\r")
->   <|> try (string "\r\n")
->   <|> string "\n"
->   <|> string "\r"
->   <?> "end of line missing"
->
-> parseLHS :: String -> Either ParseError [String]
-> parseLHS input = parse lhsParser "nop" input
->
-> lhsFile lhs = do
->   let (fname, ext) = span ((/=) '.') lhs
->   if (ext /= ".lhs")
->   then putStrLn $ "Expected an lhs file but got " ++ lhs
->   else do
->       putStrLn $ "Converting " ++ lhs ++ " to html..."
->       tryReadFile lhs fname `catchIOError` hdlReadFile
->
-> tryReadFile file fname = do
->       lhscontent <- readFile file
->       putStrLn lhscontent
->       let html = fname ++ ".html"
->       either print (writeFile html . concat) (parseLHS lhscontent)
->
-> hdlReadFile e
->   | isDoesNotExistError e =
->       case ioeGetFileName e of
->           Just path -> putStrLn $ "File does not exist: " ++ path
->           Nothing -> putStrLn "File does not exist at unknown location!"
->   | otherwise = ioError e
->
-> main = do
->   args <- getArgs
->   mapM_ lhsFile args
-
-\end{lstlisting}
+Según el reporte de haskell la expresión que no ha sido
+probada es \texttt{ejemplo}, sin embargo, dado que es una
+simple definición de ejemplo se ignora.
+}
+}
+\\
 
 \end{document}
