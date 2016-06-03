@@ -146,8 +146,13 @@ funcionamiento del \texttt{parser}, debido a que si una línea
 comienza con espacios en blanco, no se puede determinar a
 priori si se trata de una etiqueta \texttt{h1}, \texttt{h2} o
 \texttt{p}. Por otro lado, cuando el archivo termina, no es necesario
-que el párrafo termine en una líne en blanco lo que
-explica el último caso.
+que el párrafo termine en una línea en blanco lo que
+explica el último caso.\\
+
+\texttt{eol} es simplemente para preservar los saltos de línea
+que no forman parte del las etiquetas descritas anteriormente,
+son preservadas en la traducción aunque en \texttt{html} no
+tienen mucha relevancia.
 }
 }
 \\
@@ -229,6 +234,7 @@ lo requiere. Note que si no hay espacios en blanco no son agregados.
 }
 \\
 
+\pagebreak
 \begin{lstlisting}
 
 > line :: GenParser Char st String
@@ -248,8 +254,8 @@ lo requiere. Note que si no hay espacios en blanco no son agregados.
 >   return $ ws ++ b
 >   where auxParser = do
 >           many1 (noneOf [' ', '\n', '>', '<', '&'])
->          <|> (string ">" >> return "&lt;")
->          <|> (string "<" >> return "&gt;")
+>          <|> (string ">" >> return "&gt;")
+>          <|> (string "<" >> return "&lt;")
 >          <|> (string "&" >> return "&amp;")
 >
 > blank :: GenParser Char st String
@@ -260,16 +266,18 @@ lo requiere. Note que si no hay espacios en blanco no son agregados.
 \noindent
 \colorbox{lightorange}{
 \parbox{\linewidth}{
-Ahora bien, el código son muchas líneas de código en haskell, y una
-línea de código es aquella que empieza exactamente por \texttt{>}
+Ahora bien, el código son muchas líneas de código en \texttt{Haskell},
+y una línea de código es aquella que empieza exactamente por \texttt{>}
 y un espacio en blanco seguida de cualquier caracter que no sea el
 final de línea o solo tiene \texttt{>} y el final de línea.\\
 
-Aquí los espacios en blancos se traducen tal y como se presentan.
+Aquí los espacios en blancos se traducen tal y como se presentan y por
+eso se utiliza la etiqueta de \texttt{html, pre}
 }
 }
 \\
 
+\pagebreak
 \begin{lstlisting}
 
 > code = do
@@ -279,7 +287,7 @@ Aquí los espacios en blancos se traducen tal y como se presentan.
 >
 > cLine = do
 >   string ">"
->   ls <- many (noneOf "\n")
+>   ls <- (char ' ' >> many (noneOf "\n")) <|> return ""
 >   eol
 >   return $ ls ++ "\n"
 >
@@ -308,6 +316,7 @@ los efecto de borde.
 }
 }
 \\
+\pagebreak
 \begin{lstlisting}
 
 > parseLHS :: String -> Either ParseError [String]
@@ -323,7 +332,6 @@ los efecto de borde.
 >
 > tryReadFile file fname = do
 >       lhscontent <- readFile file
->       putStrLn lhscontent
 >       let html = fname ++ ".html"
 >       either print (writeFile html . concat) (parseLHS lhscontent)
 >
