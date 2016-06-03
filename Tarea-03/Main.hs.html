@@ -1,0 +1,553 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="lineno">    1 </span>\documentclass[11pt,fleqn]{article}
+<span class="lineno">    2 </span>
+<span class="lineno">    3 </span>\usepackage{tikz}
+<span class="lineno">    4 </span>\usepackage{multicol}
+<span class="lineno">    5 </span>\usepackage{latexsym}
+<span class="lineno">    6 </span>\usepackage{array}
+<span class="lineno">    7 </span>\usepackage[english,spanish]{babel}
+<span class="lineno">    8 </span>\usepackage{lmodern}
+<span class="lineno">    9 </span>\usepackage{listings}
+<span class="lineno">   10 </span>\usepackage[utf8]{inputenc}
+<span class="lineno">   11 </span>\usepackage[T1]{fontenc}
+<span class="lineno">   12 </span>\usepackage[colorlinks=true,urlcolor=blue]{hyperref}
+<span class="lineno">   13 </span>\usepackage{xcolor}
+<span class="lineno">   14 </span>
+<span class="lineno">   15 </span>\usepackage{algorithmic}
+<span class="lineno">   16 </span>\usepackage{algorithm}
+<span class="lineno">   17 </span>
+<span class="lineno">   18 </span>\usetikzlibrary{positioning,shapes,folding,positioning,shapes,trees}
+<span class="lineno">   19 </span>
+<span class="lineno">   20 </span>\hypersetup{
+<span class="lineno">   21 </span>  colorlinks=true,
+<span class="lineno">   22 </span>  linkcolor=blue,
+<span class="lineno">   23 </span>  urlcolor=blue
+<span class="lineno">   24 </span>}
+<span class="lineno">   25 </span>
+<span class="lineno">   26 </span>\definecolor{brown}{rgb}{0.7,0.2,0}
+<span class="lineno">   27 </span>\definecolor{darkgreen}{rgb}{0,0.6,0.1}
+<span class="lineno">   28 </span>\definecolor{darkgrey}{rgb}{0.4,0.4,0.4}
+<span class="lineno">   29 </span>\definecolor{lightgrey}{rgb}{0.95,0.95,0.95}
+<span class="lineno">   30 </span>\definecolor{lightorange}{rgb}{1,0.94,0.9}
+<span class="lineno">   31 </span>
+<span class="lineno">   32 </span>
+<span class="lineno">   33 </span>\lstset{
+<span class="lineno">   34 </span>   language=Haskell,
+<span class="lineno">   35 </span>   gobble=2,
+<span class="lineno">   36 </span>   frame=single,
+<span class="lineno">   37 </span>   framerule=1pt,
+<span class="lineno">   38 </span>   showstringspaces=false,
+<span class="lineno">   39 </span>   basicstyle=\footnotesize\ttfamily,
+<span class="lineno">   40 </span>   keywordstyle=\textbf,
+<span class="lineno">   41 </span>   backgroundcolor=\color{lightgrey}
+<span class="lineno">   42 </span>}
+<span class="lineno">   43 </span>
+<span class="lineno">   44 </span>\begin{document}
+<span class="lineno">   45 </span>
+<span class="lineno">   46 </span>\title{CI4251 - Programación Funcional Avanzada \\ Tarea 3}
+<span class="lineno">   47 </span>
+<span class="lineno">   48 </span>\author{Stefani Castellanos\\
+<span class="lineno">   49 </span>11-11394\\
+<span class="lineno">   50 </span>\href{mailto:scct95@gmail.com}{&lt;scct95@gmail.com&gt;}}
+<span class="lineno">   51 </span>
+<span class="lineno">   52 </span>\date{Junio 1, 2016}
+<span class="lineno">   53 </span>
+<span class="lineno">   54 </span>\maketitle
+<span class="lineno">   55 </span>
+<span class="lineno">   56 </span>\pagebreak
+<span class="lineno">   57 </span>
+<span class="lineno">   58 </span>\begin{lstlisting}
+<span class="lineno">   59 </span>
+<span class="lineno">   60 </span>&gt; import Test.QuickCheck
+<span class="lineno">   61 </span>&gt; import Data.Maybe (fromJust)
+<span class="lineno">   62 </span>&gt; import Text.ParserCombinators.Parsec
+<span class="lineno">   63 </span>
+<span class="lineno">   64 </span>\end{lstlisting}
+<span class="lineno">   65 </span>
+<span class="lineno">   66 </span>
+<span class="lineno">   67 </span>\section{\emph{Buffer} de un editor}
+<span class="lineno">   68 </span>
+<span class="lineno">   69 </span>\noindent
+<span class="lineno">   70 </span>Durante la programación de un editor de texto es necesario modelar
+<span class="lineno">   71 </span>el \emph{buffer} que contiene una línea particular mientras es
+<span class="lineno">   72 </span>modificada por el usuario. Las modificaciones se realizan según la
+<span class="lineno">   73 </span>posición del cursor en la línea.
+<span class="lineno">   74 </span>
+<span class="lineno">   75 </span>\noindent
+<span class="lineno">   76 </span>Un modelo muy eficiente para el \emph{buffer} de un editor sería
+<span class="lineno">   77 </span>
+<span class="lineno">   78 </span>\begin{lstlisting}
+<span class="lineno">   79 </span>
+<span class="lineno">   80 </span>&gt; type Buffer = (String,String)
+<span class="lineno">   81 </span>
+<span class="lineno">   82 </span>\end{lstlisting}
+<span class="lineno">   83 </span>
+<span class="lineno">   84 </span>\noindent
+<span class="lineno">   85 </span>donde el primer \verb=String= contiene los caracteres antes del cursor
+<span class="lineno">   86 </span>pero en orden \textbf{inverso}, y el segundo \verb=String= contiene los
+<span class="lineno">   87 </span>caracteres después del cursor en el orden normal, e.g. suponiendo que
+<span class="lineno">   88 </span>el cursor sobre una letra es modelado con $\underline{X}$, la línea
+<span class="lineno">   89 </span>
+<span class="lineno">   90 </span>\begin{center}
+<span class="lineno">   91 </span>Esto es un ejemplo, $\underline{d}$e como opera el buffer
+<span class="lineno">   92 </span>\end{center}
+<span class="lineno">   93 </span>
+<span class="lineno">   94 </span>\noindent
+<span class="lineno">   95 </span>se modelaría como
+<span class="lineno">   96 </span>
+<span class="lineno">   97 </span>\begin{lstlisting}
+<span class="lineno">   98 </span>
+<span class="lineno">   99 </span>&gt; <span class="decl"><span class="nottickedoff">ejemplo = (&quot; ,olpmeje nu se otsE&quot;,&quot;de como opera el buffer&quot;)</span></span>
+<span class="lineno">  100 </span>
+<span class="lineno">  101 </span>\end{lstlisting}
+<span class="lineno">  102 </span>
+<span class="lineno">  103 </span>\noindent
+<span class="lineno">  104 </span>Defina las operaciones
+<span class="lineno">  105 </span>
+<span class="lineno">  106 </span>\begin{lstlisting}
+<span class="lineno">  107 </span>
+<span class="lineno">  108 </span>&gt; empty      :: Buffer                -- Buffer nuevo
+<span class="lineno">  109 </span>&gt; <span class="decl"><span class="istickedoff">empty = ([],[])</span></span>
+<span class="lineno">  110 </span>&gt;
+<span class="lineno">  111 </span>&gt; cursor     :: Buffer -&gt; Maybe Char  -- Leer bajo el cursor
+<span class="lineno">  112 </span>&gt; <span class="decl"><span class="istickedoff">cursor (_, []) = Nothing</span>
+<span class="lineno">  113 </span><span class="spaces"></span><span class="istickedoff">&gt; cursor (_, rs) = Just $ head rs</span></span>
+<span class="lineno">  114 </span>&gt;
+<span class="lineno">  115 </span>&gt; insert :: Char -&gt; Buffer -&gt; Buffer -- ...antes del cursor
+<span class="lineno">  116 </span>&gt; <span class="decl"><span class="istickedoff">insert c (ls, rs) = (c : ls, rs)</span></span>
+<span class="lineno">  117 </span>&gt;
+<span class="lineno">  118 </span>&gt; delete :: Buffer -&gt; Buffer         -- ...anterior al cursor
+<span class="lineno">  119 </span>&gt; <span class="decl"><span class="istickedoff">delete b@([], rs)   = b</span>
+<span class="lineno">  120 </span><span class="spaces"></span><span class="istickedoff">&gt; delete (l : ls, rs) = (ls, rs)</span></span>
+<span class="lineno">  121 </span>&gt;
+<span class="lineno">  122 </span>&gt; remove :: Buffer -&gt; Buffer         -- ...bajo al cursor
+<span class="lineno">  123 </span>&gt; <span class="decl"><span class="istickedoff">remove b@(ls, [])   = b</span>
+<span class="lineno">  124 </span><span class="spaces"></span><span class="istickedoff">&gt; remove (ls, r : rs) = (ls, rs)</span></span>
+<span class="lineno">  125 </span>&gt;
+<span class="lineno">  126 </span>&gt; left :: Buffer -&gt; Buffer           -- Cursor a la izquierda
+<span class="lineno">  127 </span>&gt; <span class="decl"><span class="istickedoff">left b@([], rs)   = b</span>
+<span class="lineno">  128 </span><span class="spaces"></span><span class="istickedoff">&gt; left (l : ls, rs) = (ls, l : rs)</span></span>
+<span class="lineno">  129 </span>&gt;
+<span class="lineno">  130 </span>&gt; right :: Buffer -&gt; Buffer          -- Cursor a la derecha
+<span class="lineno">  131 </span>&gt; <span class="decl"><span class="istickedoff">right b@(ls, [])   = b</span>
+<span class="lineno">  132 </span><span class="spaces"></span><span class="istickedoff">&gt; right (ls, r : rs) = (r : ls, rs)</span></span>
+<span class="lineno">  133 </span>&gt;
+<span class="lineno">  134 </span>&gt; atLeft :: Buffer -&gt; Bool           -- Extremo izquierdo?
+<span class="lineno">  135 </span>&gt; <span class="decl"><span class="istickedoff">atLeft ([],_) = True</span>
+<span class="lineno">  136 </span><span class="spaces"></span><span class="istickedoff">&gt; atLeft _      = False</span></span>
+<span class="lineno">  137 </span>&gt;
+<span class="lineno">  138 </span>&gt; atRight :: Buffer -&gt; Bool          -- Extremo derecho?
+<span class="lineno">  139 </span>&gt; <span class="decl"><span class="istickedoff">atRight (_, []) = True</span>
+<span class="lineno">  140 </span><span class="spaces"></span><span class="istickedoff">&gt; atRight _       = False</span></span>
+<span class="lineno">  141 </span>
+<span class="lineno">  142 </span>\end{lstlisting}
+<span class="lineno">  143 </span>
+<span class="lineno">  144 </span>\noindent
+<span class="lineno">  145 </span>Implante estas operaciones y ofrezca suficientes propiedades
+<span class="lineno">  146 </span>QuickCheck para comprobar la correctitud de la implantación.
+<span class="lineno">  147 </span>Por supuesto que «suficientes» es un eufemismo por «use técnicas
+<span class="lineno">  148 </span>de análisis de cobertura para garantizar que sus casos de prueba
+<span class="lineno">  149 </span>ejercitan \textbf{toda} la librería».
+<span class="lineno">  150 </span>\\
+<span class="lineno">  151 </span>
+<span class="lineno">  152 </span>\noindent
+<span class="lineno">  153 </span>Note que \emph{ninguna} de las operaciones produce errores;
+<span class="lineno">  154 </span>esto quiere decir que, por ejemplo, \texttt{left} sobre un
+<span class="lineno">  155 </span>\emph{buffer} vacío debe producir el mismo \emph{buffer} vacío,
+<span class="lineno">  156 </span>así como \texttt{delete} al principio de la línea, no borra nada.
+<span class="lineno">  157 </span>\\
+<span class="lineno">  158 </span>
+<span class="lineno">  159 </span>\noindent
+<span class="lineno">  160 </span>Finalmente, queremos mantener la implantación eficiente así que
+<span class="lineno">  161 </span>debe \emph{evitar} el uso de la concatenación de listas (\verb=++=).
+<span class="lineno">  162 </span>\\
+<span class="lineno">  163 </span>
+<span class="lineno">  164 </span>\noindent
+<span class="lineno">  165 </span>\colorbox{lightorange}{
+<span class="lineno">  166 </span>\parbox{\linewidth}{
+<span class="lineno">  167 </span>Para ayudar a crear pruebas más generalizadas es útil crear una
+<span class="lineno">  168 </span>función que permita realizar repetir una acción sobre el buffer n veces.
+<span class="lineno">  169 </span>Se define:
+<span class="lineno">  170 </span>}
+<span class="lineno">  171 </span>}
+<span class="lineno">  172 </span>\\
+<span class="lineno">  173 </span>
+<span class="lineno">  174 </span>\begin{lstlisting}
+<span class="lineno">  175 </span>
+<span class="lineno">  176 </span>&gt; repN :: Int -&gt; (Buffer -&gt; Buffer) -&gt; Buffer -&gt; Buffer
+<span class="lineno">  177 </span>&gt; <span class="decl"><span class="istickedoff">repN 0 _ b = b</span>
+<span class="lineno">  178 </span><span class="spaces"></span><span class="istickedoff">&gt; repN n f b |<span class="tickonlytrue">n &gt; 0</span> = repN (n - 1) f (f b)</span></span>
+<span class="lineno">  179 </span>
+<span class="lineno">  180 </span>\end{lstlisting}
+<span class="lineno">  181 </span>
+<span class="lineno">  182 </span>\noindent
+<span class="lineno">  183 </span>\colorbox{lightorange}{
+<span class="lineno">  184 </span>\parbox{\linewidth}{
+<span class="lineno">  185 </span>Entonces, crear pruebas se hace más interesante. Cada una de las
+<span class="lineno">  186 </span>pruebas está clasificadas en tres categorias: trivial, mejor y seria.
+<span class="lineno">  187 </span>Las triviales son aquellas que representan un buffer vacío. Las
+<span class="lineno">  188 </span>mejores son las que no representan un buffer vacío. Y por último,
+<span class="lineno">  189 </span>las serias son aquellas en donde el buffer tiene al menos 42
+<span class="lineno">  190 </span>caracteres. Evidentemente todas las serias son mejores.\\
+<span class="lineno">  191 </span>
+<span class="lineno">  192 </span>Se realiza esta clasificación para tener un idea de la calidad
+<span class="lineno">  193 </span>de pruebas que se están realizando, no es muy útil probar 100
+<span class="lineno">  194 </span>veces el buffer vacío.\\
+<span class="lineno">  195 </span>
+<span class="lineno">  196 </span>La primera prueba consiste en insertar un n elementos a un buffer
+<span class="lineno">  197 </span>y luego borrarlos, esto debe producir el mismo buffer.
+<span class="lineno">  198 </span>}
+<span class="lineno">  199 </span>}
+<span class="lineno">  200 </span>\\
+<span class="lineno">  201 </span>
+<span class="lineno">  202 </span>\begin{lstlisting}
+<span class="lineno">  203 </span>
+<span class="lineno">  204 </span>&gt; prop_insert_delete :: Buffer -&gt; Char -&gt; Property
+<span class="lineno">  205 </span>&gt; <span class="decl"><span class="istickedoff">prop_insert_delete b@(ls, rs) c =</span>
+<span class="lineno">  206 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (null ls || null rs) &quot;trivial&quot; $</span>
+<span class="lineno">  207 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (not (null ls || null rs)) &quot;mejor&quot; $</span>
+<span class="lineno">  208 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (length ls &gt; 20 &amp;&amp; length rs &gt; 20) &quot;seria&quot; $</span>
+<span class="lineno">  209 </span><span class="spaces"></span><span class="istickedoff">&gt;   repN 100 (delete . insert <span class="nottickedoff">c</span>) b == b</span></span>
+<span class="lineno">  210 </span>
+<span class="lineno">  211 </span>\end{lstlisting}
+<span class="lineno">  212 </span>
+<span class="lineno">  213 </span>\noindent
+<span class="lineno">  214 </span>\colorbox{lightorange}{
+<span class="lineno">  215 </span>\parbox{\linewidth}{
+<span class="lineno">  216 </span>Al insertar un elemento a un buffer y moverse a la izquierda
+<span class="lineno">  217 </span>leer el elemento sobre el que está posicionado (cursor) debe
+<span class="lineno">  218 </span>ser el mismo que fue insertado.
+<span class="lineno">  219 </span>}
+<span class="lineno">  220 </span>}
+<span class="lineno">  221 </span>\\
+<span class="lineno">  222 </span>
+<span class="lineno">  223 </span>\begin{lstlisting}
+<span class="lineno">  224 </span>
+<span class="lineno">  225 </span>&gt; prop_insert_cursor :: Buffer -&gt; Char -&gt; Property
+<span class="lineno">  226 </span>&gt; <span class="decl"><span class="istickedoff">prop_insert_cursor b@(ls, rs) c =</span>
+<span class="lineno">  227 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (null ls || null rs) &quot;trivial&quot; $</span>
+<span class="lineno">  228 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (not (null ls || null rs)) &quot;mejor&quot; $</span>
+<span class="lineno">  229 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (length ls &gt; 20 &amp;&amp; length rs &gt; 20) &quot;seria&quot; $</span>
+<span class="lineno">  230 </span><span class="spaces"></span><span class="istickedoff">&gt;   c == fromJust (cursor ((left . insert c) b))</span></span>
+<span class="lineno">  231 </span>
+<span class="lineno">  232 </span>\end{lstlisting}
+<span class="lineno">  233 </span>
+<span class="lineno">  234 </span>\noindent
+<span class="lineno">  235 </span>\colorbox{lightorange}{
+<span class="lineno">  236 </span>\parbox{\linewidth}{
+<span class="lineno">  237 </span>Moverse a la izquierda la cantidad de elementos que están
+<span class="lineno">  238 </span>a la izquierda del cursor debe resultar en quedar &quot;a la izquierda&quot;
+<span class="lineno">  239 </span>del buffer
+<span class="lineno">  240 </span>}
+<span class="lineno">  241 </span>}
+<span class="lineno">  242 </span>\\
+<span class="lineno">  243 </span>\begin{lstlisting}
+<span class="lineno">  244 </span>
+<span class="lineno">  245 </span>&gt; <span class="decl"><span class="istickedoff">prop_left_atleft b@(ls, rs) =</span>
+<span class="lineno">  246 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (null ls || null rs) &quot;trivial&quot; $</span>
+<span class="lineno">  247 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (not (null ls || null rs)) &quot;mejor&quot; $</span>
+<span class="lineno">  248 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (length ls &gt; 20 &amp;&amp; length rs &gt; 20) &quot;seria&quot; $</span>
+<span class="lineno">  249 </span><span class="spaces"></span><span class="istickedoff">&gt;   atLeft $ repN (length ls) left b</span></span>
+<span class="lineno">  250 </span>
+<span class="lineno">  251 </span>\end{lstlisting}
+<span class="lineno">  252 </span>
+<span class="lineno">  253 </span>\noindent
+<span class="lineno">  254 </span>\colorbox{lightorange}{
+<span class="lineno">  255 </span>\parbox{\linewidth}{
+<span class="lineno">  256 </span>Moverse a la izquierda la cantidad de elementos a
+<span class="lineno">  257 </span>la izquierda del buffer debe resultar en que a
+<span class="lineno">  258 </span>la derecha tiene toda la información en el orden natural.
+<span class="lineno">  259 </span>}
+<span class="lineno">  260 </span>}
+<span class="lineno">  261 </span>\\
+<span class="lineno">  262 </span>
+<span class="lineno">  263 </span>\begin{lstlisting}
+<span class="lineno">  264 </span>
+<span class="lineno">  265 </span>&gt; <span class="decl"><span class="istickedoff">prop_left_to_original b@(ls, rs) =</span>
+<span class="lineno">  266 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (null ls || null rs) &quot;trivial&quot; $</span>
+<span class="lineno">  267 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (not (null ls || null rs)) &quot;mejor&quot; $</span>
+<span class="lineno">  268 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (length ls &gt; 20 &amp;&amp; length rs &gt; 20) &quot;seria&quot; $</span>
+<span class="lineno">  269 </span><span class="spaces"></span><span class="istickedoff">&gt;   (snd . repN (length ls) left) b == (reverse ls) ++ rs</span></span>
+<span class="lineno">  270 </span>
+<span class="lineno">  271 </span>\end{lstlisting}
+<span class="lineno">  272 </span>
+<span class="lineno">  273 </span>\noindent
+<span class="lineno">  274 </span>\colorbox{lightorange}{
+<span class="lineno">  275 </span>\parbox{\linewidth}{
+<span class="lineno">  276 </span>Análogo a \texttt{left\_atleft}.
+<span class="lineno">  277 </span>
+<span class="lineno">  278 </span>}
+<span class="lineno">  279 </span>}
+<span class="lineno">  280 </span>\\
+<span class="lineno">  281 </span>
+<span class="lineno">  282 </span>\begin{lstlisting}
+<span class="lineno">  283 </span>
+<span class="lineno">  284 </span>&gt; <span class="decl"><span class="istickedoff">prop_right_atright b@(ls, rs) =</span>
+<span class="lineno">  285 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (null ls || null rs) &quot;trivial&quot; $</span>
+<span class="lineno">  286 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (not (null ls || null rs)) &quot;mejor&quot; $</span>
+<span class="lineno">  287 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (length ls &gt; 20 &amp;&amp; length rs &gt; 20) &quot;seria&quot; $</span>
+<span class="lineno">  288 </span><span class="spaces"></span><span class="istickedoff">&gt;   atRight $ repN (length rs) right b</span></span>
+<span class="lineno">  289 </span>
+<span class="lineno">  290 </span>\end{lstlisting}
+<span class="lineno">  291 </span>
+<span class="lineno">  292 </span>\noindent
+<span class="lineno">  293 </span>\colorbox{lightorange}{
+<span class="lineno">  294 </span>\parbox{\linewidth}{
+<span class="lineno">  295 </span>Análogo a \texttt{letf\_to\_original}
+<span class="lineno">  296 </span>}
+<span class="lineno">  297 </span>}
+<span class="lineno">  298 </span>\\
+<span class="lineno">  299 </span>
+<span class="lineno">  300 </span>\begin{lstlisting}
+<span class="lineno">  301 </span>
+<span class="lineno">  302 </span>&gt; <span class="decl"><span class="istickedoff">prop_right_to_original b@(ls, rs) =</span>
+<span class="lineno">  303 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (null ls || null rs) &quot;trivial&quot; $</span>
+<span class="lineno">  304 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (not (null ls || null rs)) &quot;mejor&quot; $</span>
+<span class="lineno">  305 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (length ls &gt; 20 &amp;&amp; length rs &gt; 20) &quot;seria&quot; $</span>
+<span class="lineno">  306 </span><span class="spaces"></span><span class="istickedoff">&gt;   (reverse . fst . repN (length rs) right) b == (reverse ls) ++ rs</span></span>
+<span class="lineno">  307 </span>
+<span class="lineno">  308 </span>\end{lstlisting}
+<span class="lineno">  309 </span>
+<span class="lineno">  310 </span>\noindent
+<span class="lineno">  311 </span>\colorbox{lightorange}{
+<span class="lineno">  312 </span>\parbox{\linewidth}{
+<span class="lineno">  313 </span>Eliminar todo lo que está a la izquierda y todo lo que
+<span class="lineno">  314 </span>está a la derecha del cursor debe resultar en un buffer
+<span class="lineno">  315 </span>vacío.
+<span class="lineno">  316 </span>}
+<span class="lineno">  317 </span>}
+<span class="lineno">  318 </span>\\
+<span class="lineno">  319 </span>
+<span class="lineno">  320 </span>\begin{lstlisting}
+<span class="lineno">  321 </span>
+<span class="lineno">  322 </span>&gt; <span class="decl"><span class="istickedoff">prop_clear_all b@(ls, rs) =</span>
+<span class="lineno">  323 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (null ls || null rs) &quot;trivial&quot; $</span>
+<span class="lineno">  324 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (not (null ls || null rs)) &quot;mejor&quot; $</span>
+<span class="lineno">  325 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (length ls &gt; 20 &amp;&amp; length rs &gt; 20) &quot;seria&quot; $</span>
+<span class="lineno">  326 </span><span class="spaces"></span><span class="istickedoff">&gt;   (repN (length ls) delete . repN (length rs) remove) b == empty</span></span>
+<span class="lineno">  327 </span>
+<span class="lineno">  328 </span>\end{lstlisting}
+<span class="lineno">  329 </span>
+<span class="lineno">  330 </span>\noindent
+<span class="lineno">  331 </span>\colorbox{lightorange}{
+<span class="lineno">  332 </span>\parbox{\linewidth}{
+<span class="lineno">  333 </span>Moverse a la izquierda tanto elementos y borrar dicho elemento
+<span class="lineno">  334 </span>es igual a moverse a la izquierda sin borrar nada. Es decir,
+<span class="lineno">  335 </span>borrar a la izquierda cuando se está allí no produce cambios.
+<span class="lineno">  336 </span>}
+<span class="lineno">  337 </span>}
+<span class="lineno">  338 </span>\\
+<span class="lineno">  339 </span>
+<span class="lineno">  340 </span>\begin{lstlisting}
+<span class="lineno">  341 </span>
+<span class="lineno">  342 </span>&gt; <span class="decl"><span class="istickedoff">prop_clear_all_left b@(ls, rs) =</span>
+<span class="lineno">  343 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (null ls || null rs) &quot;trivial&quot; $</span>
+<span class="lineno">  344 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (not (null ls || null rs)) &quot;mejor&quot; $</span>
+<span class="lineno">  345 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (length ls &gt; 20 &amp;&amp; length rs &gt; 20) &quot;seria&quot; $</span>
+<span class="lineno">  346 </span><span class="spaces"></span><span class="istickedoff">&gt;   (delete . repN (length ls) left) b == repN (length ls) left b</span></span>
+<span class="lineno">  347 </span>
+<span class="lineno">  348 </span>\end{lstlisting}
+<span class="lineno">  349 </span>
+<span class="lineno">  350 </span>\noindent
+<span class="lineno">  351 </span>\colorbox{lightorange}{
+<span class="lineno">  352 </span>\parbox{\linewidth}{
+<span class="lineno">  353 </span>Análogo a \texttt{clear\_all\_right}
+<span class="lineno">  354 </span>}
+<span class="lineno">  355 </span>}
+<span class="lineno">  356 </span>\\
+<span class="lineno">  357 </span>
+<span class="lineno">  358 </span>\begin{lstlisting}
+<span class="lineno">  359 </span>
+<span class="lineno">  360 </span>&gt; <span class="decl"><span class="istickedoff">prop_clear_all_right b@(ls, rs) =</span>
+<span class="lineno">  361 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (null ls || null rs) &quot;trivial&quot; $</span>
+<span class="lineno">  362 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (not (null ls || null rs)) &quot;mejor&quot; $</span>
+<span class="lineno">  363 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (length ls &gt; 20 &amp;&amp; length rs &gt; 20) &quot;seria&quot; $</span>
+<span class="lineno">  364 </span><span class="spaces"></span><span class="istickedoff">&gt;   (remove . repN (length rs) right) b == repN (length rs) right b</span></span>
+<span class="lineno">  365 </span>
+<span class="lineno">  366 </span>\end{lstlisting}
+<span class="lineno">  367 </span>
+<span class="lineno">  368 </span>\noindent
+<span class="lineno">  369 </span>\colorbox{lightorange}{
+<span class="lineno">  370 </span>\parbox{\linewidth}{
+<span class="lineno">  371 </span>Moverse la misma cantidad a la derecha y a la izquierda no produce
+<span class="lineno">  372 </span>cambios en el buffer, siempre y cuando no se muevan más caracteres
+<span class="lineno">  373 </span>hacia un lado de los que están.
+<span class="lineno">  374 </span>}
+<span class="lineno">  375 </span>}
+<span class="lineno">  376 </span>\\
+<span class="lineno">  377 </span>
+<span class="lineno">  378 </span>\begin{lstlisting}
+<span class="lineno">  379 </span>
+<span class="lineno">  380 </span>&gt; <span class="decl"><span class="istickedoff">prop_left_to_right b@(ls, rs) =</span>
+<span class="lineno">  381 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (null ls || null rs) &quot;trivial&quot; $</span>
+<span class="lineno">  382 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (not (null ls || null rs)) &quot;mejor&quot; $</span>
+<span class="lineno">  383 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (length ls &gt; 20 &amp;&amp; length rs &gt; 20) &quot;seria&quot; $</span>
+<span class="lineno">  384 </span><span class="spaces"></span><span class="istickedoff">&gt;   repN (length ls) (right . left) b == b</span></span>
+<span class="lineno">  385 </span>
+<span class="lineno">  386 </span>\end{lstlisting}
+<span class="lineno">  387 </span>
+<span class="lineno">  388 </span>\noindent
+<span class="lineno">  389 </span>\colorbox{lightorange}{
+<span class="lineno">  390 </span>\parbox{\linewidth}{
+<span class="lineno">  391 </span>Moverse a la izquierda al menos una caracter más que
+<span class="lineno">  392 </span>la cantidad de elementos a la izquierda es igual
+<span class="lineno">  393 </span>a moverse exactamente esa cantidad. En otras palabras,
+<span class="lineno">  394 </span>si ya se está en la izquierda moverse más hacia este
+<span class="lineno">  395 </span>sentido no produce cambios.
+<span class="lineno">  396 </span>}
+<span class="lineno">  397 </span>}
+<span class="lineno">  398 </span>\\
+<span class="lineno">  399 </span>\begin{lstlisting}
+<span class="lineno">  400 </span>
+<span class="lineno">  401 </span>&gt; <span class="decl"><span class="istickedoff">prop_left_overflow b@(ls, rs) =</span>
+<span class="lineno">  402 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (null ls || null rs) &quot;trivial&quot; $</span>
+<span class="lineno">  403 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (not (null ls || null rs)) &quot;mejor&quot; $</span>
+<span class="lineno">  404 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (length ls &gt; 20 &amp;&amp; length rs &gt; 20) &quot;seria&quot; $</span>
+<span class="lineno">  405 </span><span class="spaces"></span><span class="istickedoff">&gt;   repN (length ls + 1) left b == repN (length ls) left b</span></span>
+<span class="lineno">  406 </span>
+<span class="lineno">  407 </span>\end{lstlisting}
+<span class="lineno">  408 </span>
+<span class="lineno">  409 </span>\noindent
+<span class="lineno">  410 </span>\colorbox{lightorange}{
+<span class="lineno">  411 </span>\parbox{\linewidth}{
+<span class="lineno">  412 </span>Análogo al anterior.
+<span class="lineno">  413 </span>}
+<span class="lineno">  414 </span>}
+<span class="lineno">  415 </span>\\
+<span class="lineno">  416 </span>\begin{lstlisting}
+<span class="lineno">  417 </span>
+<span class="lineno">  418 </span>&gt; <span class="decl"><span class="istickedoff">prop_right_overflow b@(ls, rs) =</span>
+<span class="lineno">  419 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (null ls || null rs) &quot;trivial&quot; $</span>
+<span class="lineno">  420 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (not (null ls || null rs)) &quot;mejor&quot; $</span>
+<span class="lineno">  421 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (length ls &gt; 20 &amp;&amp; length rs &gt; 20) &quot;seria&quot; $</span>
+<span class="lineno">  422 </span><span class="spaces"></span><span class="istickedoff">&gt;   repN (length rs + 1) right b == repN (length rs) right b</span></span>
+<span class="lineno">  423 </span>
+<span class="lineno">  424 </span>\end{lstlisting}
+<span class="lineno">  425 </span>
+<span class="lineno">  426 </span>\noindent
+<span class="lineno">  427 </span>\colorbox{lightorange}{
+<span class="lineno">  428 </span>\parbox{\linewidth}{
+<span class="lineno">  429 </span>Moverse completamente a la derecha y leer el último caracter
+<span class="lineno">  430 </span>con \texttt{cursor} debe resultar en \texttt{Nothing}.
+<span class="lineno">  431 </span>}
+<span class="lineno">  432 </span>}
+<span class="lineno">  433 </span>\\
+<span class="lineno">  434 </span>
+<span class="lineno">  435 </span>\begin{lstlisting}
+<span class="lineno">  436 </span>
+<span class="lineno">  437 </span>&gt; <span class="decl"><span class="istickedoff">prop_right_cursor b@(ls, rs) =</span>
+<span class="lineno">  438 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (null ls || null rs) &quot;trivial&quot; $</span>
+<span class="lineno">  439 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (not (null ls || null rs)) &quot;mejor&quot; $</span>
+<span class="lineno">  440 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (length ls &gt; 20 &amp;&amp; length rs &gt; 20) &quot;seria&quot; $</span>
+<span class="lineno">  441 </span><span class="spaces"></span><span class="istickedoff">&gt;   cursor (repN (length rs) right b) == Nothing</span></span>
+<span class="lineno">  442 </span>
+<span class="lineno">  443 </span>\end{lstlisting}
+<span class="lineno">  444 </span>
+<span class="lineno">  445 </span>\noindent
+<span class="lineno">  446 </span>\colorbox{lightorange}{
+<span class="lineno">  447 </span>\parbox{\linewidth}{
+<span class="lineno">  448 </span>Moverse un paso a la derecha sin importar el estado del buffer
+<span class="lineno">  449 </span>implica que ya no se está &quot;a la izquierda&quot;, siempre y cuando el buffer
+<span class="lineno">  450 </span>no está vacío ya que en este caso el cursor no puede moverse a la derecha.
+<span class="lineno">  451 </span>
+<span class="lineno">  452 </span>Para ese caso lo ideal es realizar una prueba unitaria.
+<span class="lineno">  453 </span>}
+<span class="lineno">  454 </span>}
+<span class="lineno">  455 </span>\\
+<span class="lineno">  456 </span>
+<span class="lineno">  457 </span>\begin{lstlisting}
+<span class="lineno">  458 </span>
+<span class="lineno">  459 </span>&gt; <span class="decl"><span class="istickedoff">prop_right_atleft b@(ls, rs) =</span>
+<span class="lineno">  460 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (null rs) &quot;trivial&quot; $</span>
+<span class="lineno">  461 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (not (null ls || null rs)) &quot;mejor&quot; $</span>
+<span class="lineno">  462 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (length ls &gt; 20 &amp;&amp; length rs &gt; 20) &quot;seria&quot; $</span>
+<span class="lineno">  463 </span><span class="spaces"></span><span class="istickedoff">&gt;   if null ls &amp;&amp; null rs</span>
+<span class="lineno">  464 </span><span class="spaces"></span><span class="istickedoff">&gt;   then True --obviar el caso en que ambos son vacios</span>
+<span class="lineno">  465 </span><span class="spaces"></span><span class="istickedoff">&gt;   else not $ atLeft $ right b</span></span>
+<span class="lineno">  466 </span>
+<span class="lineno">  467 </span>\end{lstlisting}
+<span class="lineno">  468 </span>
+<span class="lineno">  469 </span>noindent
+<span class="lineno">  470 </span>\colorbox{lightorange}{
+<span class="lineno">  471 </span>\parbox{\linewidth}{
+<span class="lineno">  472 </span>Análogo al anterior.
+<span class="lineno">  473 </span>}
+<span class="lineno">  474 </span>}
+<span class="lineno">  475 </span>\\
+<span class="lineno">  476 </span>\begin{lstlisting}
+<span class="lineno">  477 </span>
+<span class="lineno">  478 </span>&gt; <span class="decl"><span class="istickedoff">prop_left_atright b@(ls, rs) =</span>
+<span class="lineno">  479 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (null ls ) &quot;trivial&quot; $</span>
+<span class="lineno">  480 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (not (null ls || null rs)) &quot;mejor&quot; $</span>
+<span class="lineno">  481 </span><span class="spaces"></span><span class="istickedoff">&gt;   classify (length ls &gt; 20 &amp;&amp; length rs &gt; 20) &quot;seria&quot; $</span>
+<span class="lineno">  482 </span><span class="spaces"></span><span class="istickedoff">&gt;   if null ls &amp;&amp; null rs</span>
+<span class="lineno">  483 </span><span class="spaces"></span><span class="istickedoff">&gt;   then True --obviar el caso en que ambos son vacios</span>
+<span class="lineno">  484 </span><span class="spaces"></span><span class="istickedoff">&gt;   else not $ atRight $ left b</span></span>
+<span class="lineno">  485 </span>
+<span class="lineno">  486 </span>\end{lstlisting}
+<span class="lineno">  487 </span>
+<span class="lineno">  488 </span>\begin{lstlisting}
+<span class="lineno">  489 </span>
+<span class="lineno">  490 </span>&gt; <span class="decl"><span class="istickedoff">main = do</span>
+<span class="lineno">  491 </span><span class="spaces"></span><span class="istickedoff">&gt;   quickCheck prop_insert_delete</span>
+<span class="lineno">  492 </span><span class="spaces"></span><span class="istickedoff">&gt;   quickCheck prop_insert_cursor</span>
+<span class="lineno">  493 </span><span class="spaces"></span><span class="istickedoff">&gt;   quickCheck prop_left_atleft</span>
+<span class="lineno">  494 </span><span class="spaces"></span><span class="istickedoff">&gt;   quickCheck prop_left_to_original</span>
+<span class="lineno">  495 </span><span class="spaces"></span><span class="istickedoff">&gt;   quickCheck prop_right_atright</span>
+<span class="lineno">  496 </span><span class="spaces"></span><span class="istickedoff">&gt;   quickCheck prop_right_to_original</span>
+<span class="lineno">  497 </span><span class="spaces"></span><span class="istickedoff">&gt;   quickCheck prop_clear_all</span>
+<span class="lineno">  498 </span><span class="spaces"></span><span class="istickedoff">&gt;   quickCheck prop_clear_all_left</span>
+<span class="lineno">  499 </span><span class="spaces"></span><span class="istickedoff">&gt;   quickCheck prop_clear_all_right</span>
+<span class="lineno">  500 </span><span class="spaces"></span><span class="istickedoff">&gt;   quickCheck prop_left_to_right</span>
+<span class="lineno">  501 </span><span class="spaces"></span><span class="istickedoff">&gt;   quickCheck prop_left_overflow</span>
+<span class="lineno">  502 </span><span class="spaces"></span><span class="istickedoff">&gt;   quickCheck prop_right_overflow</span>
+<span class="lineno">  503 </span><span class="spaces"></span><span class="istickedoff">&gt;   quickCheck prop_right_cursor</span>
+<span class="lineno">  504 </span><span class="spaces"></span><span class="istickedoff">&gt;   quickCheck prop_right_atleft</span>
+<span class="lineno">  505 </span><span class="spaces"></span><span class="istickedoff">&gt;   quickCheck prop_left_atright</span></span>
+<span class="lineno">  506 </span>
+<span class="lineno">  507 </span>\end{lstlisting}
+<span class="lineno">  508 </span>
+<span class="lineno">  509 </span>\noindent
+<span class="lineno">  510 </span>\colorbox{lightorange}{
+<span class="lineno">  511 </span>\parbox{\linewidth}{
+<span class="lineno">  512 </span>Al correr el main obtenemos:
+<span class="lineno">  513 </span>99\% expressions used (672/676)\\
+<span class="lineno">  514 </span> 66\% boolean coverage (2/3)\\
+<span class="lineno">  515 </span>       0\% guards (0/1), 1 always True\\
+<span class="lineno">  516 </span>     100\% 'if' conditions (2/2)\\
+<span class="lineno">  517 </span>     100\% qualifiers (0/0)\\
+<span class="lineno">  518 </span>100\% alternatives used (20/20)\\
+<span class="lineno">  519 </span>100\% local declarations used (0/0)\\
+<span class="lineno">  520 </span>96\% top-level declarations used (26/27)\\
+<span class="lineno">  521 </span>
+<span class="lineno">  522 </span>Según el reporte de \texttt{Haskell} la expresión que no ha sido
+<span class="lineno">  523 </span>probada es \texttt{ejemplo}, sin embargo, dado que es una
+<span class="lineno">  524 </span>simple definición de ejemplo se ignora.
+<span class="lineno">  525 </span>
+<span class="lineno">  526 </span>Resulta evidente que se pueden incluir algunas pruebas
+<span class="lineno">  527 </span>unitarias para complementar el código, pero el análisis
+<span class="lineno">  528 </span>de cobertura de \texttt{Haskell} indica que se logró cubrir
+<span class="lineno">  529 </span>}
+<span class="lineno">  530 </span>}
+<span class="lineno">  531 </span>\\
+<span class="lineno">  532 </span>
+<span class="lineno">  533 </span>\end{document}
+
+</pre>
+</body>
+</html>
