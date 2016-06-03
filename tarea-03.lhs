@@ -261,7 +261,7 @@ la derecha tiene toda la información en el orden natural.
 \noindent
 \colorbox{lightorange}{
 \parbox{\linewidth}{
-Análogo a \texttt{left atleft}.
+Análogo a \texttt{left\_atleft}.
 
 }
 }
@@ -280,7 +280,7 @@ Análogo a \texttt{left atleft}.
 \noindent
 \colorbox{lightorange}{
 \parbox{\linewidth}{
-Análogo a \texttt{letf to original}
+Análogo a \texttt{letf\_to\_original}
 }
 }
 \\
@@ -338,7 +338,7 @@ borrar a la izquierda cuando se está allí no produce cambios.
 \noindent
 \colorbox{lightorange}{
 \parbox{\linewidth}{
-Análogo a \texttt{clear all right}
+Análogo a \texttt{clear\_all\_right}
 }
 }
 \\
