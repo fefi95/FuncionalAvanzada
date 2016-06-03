@@ -63,6 +63,7 @@
 > import System.Environment (getArgs)
 > import System.IO.Error (catchIOError,
 >        isDoesNotExistError, ioeGetFileName)
+> import Control.Monad (liftM2, liftM)
 
 \end{lstlisting}
 
@@ -122,21 +123,31 @@ que:
 \noindent
 Su programa debe recibir uno o más nombres de archivo \texttt{.lhs}
 desde la línea de comandos y producir sendos archivos \texttt{.html}
-con los resultados de la transformación.
+con los resultados de la transformación.\\
+
 
 \noindent
 \colorbox{lightorange}{
 \parbox{\linewidth}{
-Para realizar el \texttt{Parser} con utilizando la librería \texttt{Parsec}
-se pueden realizar funcionen que analizen pequeñas partes e ir construyendo
-parsers más complicados a partir de estos.\\
+Para realizar el \texttt{Parser} utilizando la librería \texttt{Parsec}
+se pueden hacer funciones que analizen pequeñas partes e ir
+construyendo \texttt{Parsers} más complicados a partir de estos.\\
 
-Un archivo \texttt{lhs} con la especificaciones del enunciado solo puede
-tener cuatro tipo de estructuras: aquellas que comienzan con \texttt{*},
-las que comienzan con \texttt{\#}, código que comienza con  \texttt{>} seguido
-un espacio en blanco con un párrafo suelto. Por lo que definimos
-\texttt{lhsParser} que contiene muchos \texttt{lhsContents} que se encargan
-de distinguir cuál de las estructuras se analizará.
+Un archivo \texttt{lhs} con la especificaciones del enunciado
+solo puede tener cuatro tipo de estructuras: aquellas que
+comienzan con \texttt{*},las que comienzan con \texttt{\#},
+código que comienza con  \texttt{>} seguido una línea. Por lo que
+definimos \texttt{lhsParser} que contiene muchos
+\texttt{lhsContents} que se encargan de distinguir cuál
+de las estructuras se analizará.\\
+
+El uso de \texttt{try} es indispensable para el correcto
+funcionamiento del \texttt{parser}, debido a que si una línea
+comienza con espacios en blanco, no se puede determinar a
+priori si se trata de una etiqueta \texttt{h1}, \texttt{h2} o
+\texttt{p}. Por otro lado, cuando el archivo termina, no es necesario
+que el párrafo termine en una líne en blanco lo que
+explica el último caso.
 }
 }
 \\
@@ -145,10 +156,12 @@ de distinguir cuál de las estructuras se analizará.
 
 > lhsParser =  many lhsContent
 >
-> lhsContent = h1
->          <|> h2
+> lhsContent = eol
+>          <|> try h1
+>          <|> try h2
 >          <|> code
->          <|> try p
+>          <|> liftM2 (\a b -> b) eol (try p)
+>          <|> p
 
 \end{lstlisting}
 
@@ -167,18 +180,17 @@ cambiando \texttt{*} por \texttt{\#}.
 \begin{lstlisting}
 
 > h1 = do
->   blank
->   char '*'
->   blank
+>   beginh '*'
 >   cs <- line
 >   return $ "<h1>\n" ++ cs ++ "</h1>\n"
 >
 > h2 = do
->   blank
->   char '#'
->   blank
+>   beginh '#'
 >   cs <- line
 >   return $ "<h2>\n" ++ cs ++ "</h2>\n"
+>
+> beginh c = blankOrN >> char c >> return ""
+>   where blankOrN = blank <|> return ""
 
 \end{lstlisting}
 
@@ -193,10 +205,7 @@ salto de línea.
 
 \begin{lstlisting}
 
-> p = do
->   ls <- many line
->   eol
->   return $ concat $ ["<p>\n"] ++ ls ++ ["</p>\n"]
+> p = liftM (concat . (["<p>\n"] ++) . (++ ["</p>\n"])) (many1 line)
 
 \end{lstlisting}
 
@@ -211,7 +220,7 @@ Una palabra son muchos caracteres que no incluyen el espacio
 en blanco ni el final de línea. También se excluyen los
 símbolos \texttt{<}, \texttt{>} y \texttt{\&} puesto que
 estos requieren un tratamiento especial, transformarlo a sus
-entidades correspondiente de \texttt{html}.
+entidades correspondiente de \texttt{html}.\\
 
 Un espacio en blanco no es más que uno o más espacios en blanco
 llevados a un sólo espacio en blanco dado que el ejercicio así
@@ -224,25 +233,27 @@ lo requiere. Note que si no hay espacios en blanco no son agregados.
 
 > line :: GenParser Char st String
 > line = do
->   ws <- try $ blank >> many1 word
+>   ws <- auxParser
 >   eol
 >   return $ concat $ ws ++ ["\n"]
+>   where auxParser = do
+>         many1 word
+>         <|> liftM2 (++) (blank >>= return . (:[])) (many word)
+>
 >
 > word :: GenParser Char st String
 > word = do
 >   ws <- auxParser
->   b <- blank
+>   b <- blank <|> return ""
 >   return $ ws ++ b
->
-> auxParser = do
->       many1 (noneOf [' ', '\n', '>', '<', '&'])
->   <|> (string ">" >> return "&lt;")
->   <|> (string "<" >> return "&gt;")
->   <|> (string "&" >> return "&amp;")
+>   where auxParser = do
+>           many1 (noneOf [' ', '\n', '>', '<', '&'])
+>          <|> (string ">" >> return "&lt;")
+>          <|> (string "<" >> return "&gt;")
+>          <|> (string "&" >> return "&amp;")
 >
 > blank :: GenParser Char st String
-> blank = try (many1 (char ' ') >> return " ")
->      <|> return ""
+> blank = many1 (char ' ') >> return " "
 
 \end{lstlisting}
 
@@ -252,7 +263,7 @@ lo requiere. Note que si no hay espacios en blanco no son agregados.
 Ahora bien, el código son muchas líneas de código en haskell, y una
 línea de código es aquella que empieza exactamente por \texttt{>}
 y un espacio en blanco seguida de cualquier caracter que no sea el
-final de línea o solo tiene \texttt{>} y el final de línea.
+final de línea o solo tiene \texttt{>} y el final de línea.\\
 
 Aquí los espacios en blancos se traducen tal y como se presentan.
 }
@@ -264,10 +275,10 @@ Aquí los espacios en blancos se traducen tal y como se presentan.
 > code = do
 >   ls <- many cLine
 >   eol
->   return $ concat $ ["<code>\n"] ++ ls ++ ["</code>\n"]
+>   return $ concat $ ["<pre>\n"] ++ ls ++ ["</pre>\n"]
 >
 > cLine = do
->   try (string "> ") <|> string ">\n"
+>   string ">"
 >   ls <- many (noneOf "\n")
 >   eol
 >   return $ ls ++ "\n"
@@ -283,15 +294,17 @@ Aquí los espacios en blancos se traducen tal y como se presentan.
 \noindent
 \colorbox{lightorange}{
 \parbox{\linewidth}{
-Por último, se realiza el manejo de \texttt{IO}. Para cada archivo, la
-función \texttt{lhsFile} recibe una archivo, valida que sea un \texttt{.lhs}
-y trata de abrirlo, si falla imprime un error explicando el fallo, si tiene
-éxito analiza el contenido y el resultado lo escribe a un archivo con el mismo
-nombre pero con extensión \texttt{.html}.
+Por último, se realiza el manejo de \texttt{IO}. Para cada archivo,
+la función \texttt{lhsFile} recibe una archivo, valida que sea un
+\texttt{.lhs} y trata de abrirlo, si falla imprime un error explicando
+el fallo, si tiene éxito analiza el contenido y el resultado
+lo escribe a un archivo con el mismo nombre pero con extensión
+\texttt{.html}.\\
 
-El uso de \texttt{mapM } permite realizar esta operación por cada archivo
-proporcionado como argumento, sin importar la cantidad de archivos que le
-sean proporcionados, además solo interesan los efecto de borde.
+El uso de \texttt{mapM\_} permite realizar esta operación por
+cada archivo proporcionado como argumento, sin importar la
+cantidad de archivos que le sean proporcionados, además solo interesan
+los efecto de borde.
 }
 }
 \\
