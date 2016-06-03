@@ -166,6 +166,7 @@ debe \emph{evitar} el uso de la concatenación de listas (\verb=++=).
 \parbox{\linewidth}{
 Para ayudar a crear pruebas más generalizadas es útil crear una
 función que permita realizar repetir una acción sobre el buffer n veces.
+Se define:
 }
 }
 \\
@@ -181,8 +182,19 @@ función que permita realizar repetir una acción sobre el buffer n veces.
 \noindent
 \colorbox{lightorange}{
 \parbox{\linewidth}{
-Insertar un n elementos a un buffer y luego borrarlos debe
-producir el mismo buffer.
+Entonces, crear pruebas se hace más interesante. Cada una de las
+pruebas está clasificadas en tres categorias: trivial, mejor y seria.
+Las triviales son aquellas que representan un buffer vacío. Las
+mejores son las que no representan un buffer vacío. Y por último,
+las serias son aquellas en donde el buffer tiene al menos 42
+caracteres. Evidentemente todas las serias son mejores.\\
+
+Se realiza esta clasificación para tener un idea de la calidad
+de pruebas que se están realizando, no es muy útil probar 100
+veces el buffer vacío.\\
+
+La primera prueba consiste en insertar un n elementos a un buffer
+y luego borrarlos, esto debe producir el mismo buffer.
 }
 }
 \\
@@ -193,7 +205,7 @@ producir el mismo buffer.
 > prop_insert_delete b@(ls, rs) c =
 >   classify (null ls || null rs) "trivial" $
 >   classify (not (null ls || null rs)) "mejor" $
->   classify (length ls > 19 && length rs > 19) "seria" $
+>   classify (length ls > 20 && length rs > 20) "seria" $
 >   repN 100 (delete . insert c) b == b
 
 \end{lstlisting}
@@ -214,7 +226,7 @@ ser el mismo que fue insertado.
 > prop_insert_cursor b@(ls, rs) c =
 >   classify (null ls || null rs) "trivial" $
 >   classify (not (null ls || null rs)) "mejor" $
->   classify (length ls > 19 && length rs > 19) "seria" $
+>   classify (length ls > 20 && length rs > 20) "seria" $
 >   c == fromJust (cursor ((left . insert c) b))
 
 \end{lstlisting}
@@ -233,7 +245,7 @@ del buffer
 > prop_left_atleft b@(ls, rs) =
 >   classify (null ls || null rs) "trivial" $
 >   classify (not (null ls || null rs)) "mejor" $
->   classify (length ls > 19 && length rs > 19) "seria" $
+>   classify (length ls > 20 && length rs > 20) "seria" $
 >   atLeft $ repN (length ls) left b
 
 \end{lstlisting}
@@ -253,7 +265,7 @@ la derecha tiene toda la información en el orden natural.
 > prop_left_to_original b@(ls, rs) =
 >   classify (null ls || null rs) "trivial" $
 >   classify (not (null ls || null rs)) "mejor" $
->   classify (length ls > 19 && length rs > 19) "seria" $
+>   classify (length ls > 20 && length rs > 20) "seria" $
 >   (snd . repN (length ls) left) b == (reverse ls) ++ rs
 
 \end{lstlisting}
@@ -272,7 +284,7 @@ Análogo a \texttt{left\_atleft}.
 > prop_right_atright b@(ls, rs) =
 >   classify (null ls || null rs) "trivial" $
 >   classify (not (null ls || null rs)) "mejor" $
->   classify (length ls > 19 && length rs > 19) "seria" $
+>   classify (length ls > 20 && length rs > 20) "seria" $
 >   atRight $ repN (length rs) right b
 
 \end{lstlisting}
@@ -290,7 +302,7 @@ Análogo a \texttt{letf\_to\_original}
 > prop_right_to_original b@(ls, rs) =
 >   classify (null ls || null rs) "trivial" $
 >   classify (not (null ls || null rs)) "mejor" $
->   classify (length ls > 19 && length rs > 19) "seria" $
+>   classify (length ls > 20 && length rs > 20) "seria" $
 >   (reverse . fst . repN (length rs) right) b == (reverse ls) ++ rs
 
 \end{lstlisting}
@@ -310,7 +322,7 @@ vacío.
 > prop_clear_all b@(ls, rs) =
 >   classify (null ls || null rs) "trivial" $
 >   classify (not (null ls || null rs)) "mejor" $
->   classify (length ls > 19 && length rs > 19) "seria" $
+>   classify (length ls > 20 && length rs > 20) "seria" $
 >   (repN (length ls) delete . repN (length rs) remove) b == empty
 
 \end{lstlisting}
@@ -330,7 +342,7 @@ borrar a la izquierda cuando se está allí no produce cambios.
 > prop_clear_all_left b@(ls, rs) =
 >   classify (null ls || null rs) "trivial" $
 >   classify (not (null ls || null rs)) "mejor" $
->   classify (length ls > 19 && length rs > 19) "seria" $
+>   classify (length ls > 20 && length rs > 20) "seria" $
 >   (delete . repN (length ls) left) b == repN (length ls) left b
 
 \end{lstlisting}
@@ -348,7 +360,7 @@ Análogo a \texttt{clear\_all\_right}
 > prop_clear_all_right b@(ls, rs) =
 >   classify (null ls || null rs) "trivial" $
 >   classify (not (null ls || null rs)) "mejor" $
->   classify (length ls > 19 && length rs > 19) "seria" $
+>   classify (length ls > 20 && length rs > 20) "seria" $
 >   (remove . repN (length rs) right) b == repN (length rs) right b
 
 \end{lstlisting}
@@ -368,7 +380,7 @@ hacia un lado de los que están.
 > prop_left_to_right b@(ls, rs) =
 >   classify (null ls || null rs) "trivial" $
 >   classify (not (null ls || null rs)) "mejor" $
->   classify (length ls > 19 && length rs > 19) "seria" $
+>   classify (length ls > 20 && length rs > 20) "seria" $
 >   repN (length ls) (right . left) b == b
 
 \end{lstlisting}
@@ -389,7 +401,7 @@ sentido no produce cambios.
 > prop_left_overflow b@(ls, rs) =
 >   classify (null ls || null rs) "trivial" $
 >   classify (not (null ls || null rs)) "mejor" $
->   classify (length ls > 19 && length rs > 19) "seria" $
+>   classify (length ls > 20 && length rs > 20) "seria" $
 >   repN (length ls + 1) left b == repN (length ls) left b
 
 \end{lstlisting}
@@ -406,7 +418,7 @@ Análogo al anterior.
 > prop_right_overflow b@(ls, rs) =
 >   classify (null ls || null rs) "trivial" $
 >   classify (not (null ls || null rs)) "mejor" $
->   classify (length ls > 19 && length rs > 19) "seria" $
+>   classify (length ls > 20 && length rs > 20) "seria" $
 >   repN (length rs + 1) right b == repN (length rs) right b
 
 \end{lstlisting}
@@ -425,7 +437,7 @@ con \texttt{cursor} debe resultar en \texttt{Nothing}.
 > prop_right_cursor b@(ls, rs) =
 >   classify (null ls || null rs) "trivial" $
 >   classify (not (null ls || null rs)) "mejor" $
->   classify (length ls > 19 && length rs > 19) "seria" $
+>   classify (length ls > 20 && length rs > 20) "seria" $
 >   cursor (repN (length rs) right b) == Nothing
 
 \end{lstlisting}
@@ -434,7 +446,7 @@ con \texttt{cursor} debe resultar en \texttt{Nothing}.
 \colorbox{lightorange}{
 \parbox{\linewidth}{
 Moverse un paso a la derecha sin importar el estado del buffer
-implica que ya no se está "a la izquierda", siempre y cuando el buffer
+implica que ya no se está ``a la izquierda", siempre y cuando el buffer
 no está vacío ya que en este caso el cursor no puede moverse a la derecha.
 
 Para ese caso lo ideal es realizar una prueba unitaria.
@@ -447,14 +459,14 @@ Para ese caso lo ideal es realizar una prueba unitaria.
 > prop_right_atleft b@(ls, rs) =
 >   classify (null rs) "trivial" $
 >   classify (not (null ls || null rs)) "mejor" $
->   classify (length ls > 19 && length rs > 19) "seria" $
+>   classify (length ls > 20 && length rs > 20) "seria" $
 >   if null ls && null rs
 >   then True --obviar el caso en que ambos son vacios
 >   else not $ atLeft $ right b
 
 \end{lstlisting}
 
-noindent
+\noindent
 \colorbox{lightorange}{
 \parbox{\linewidth}{
 Análogo al anterior.
@@ -466,12 +478,23 @@ Análogo al anterior.
 > prop_left_atright b@(ls, rs) =
 >   classify (null ls ) "trivial" $
 >   classify (not (null ls || null rs)) "mejor" $
->   classify (length ls > 19 && length rs > 19) "seria" $
+>   classify (length ls > 20 && length rs > 20) "seria" $
 >   if null ls && null rs
 >   then True --obviar el caso en que ambos son vacios
 >   else not $ atRight $ left b
 
 \end{lstlisting}
+
+\pagebreak
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Por último tenemos el programa principal que correo todas las
+pruebas.
+}
+}
+\\
 
 \begin{lstlisting}
 
@@ -505,11 +528,19 @@ Al correr el main obtenemos:
      100\% qualifiers (0/0)\\
 100\% alternatives used (20/20)\\
 100\% local declarations used (0/0)\\
- 96\% top-level declarations used (26/27)\\
+96\% top-level declarations used (26/27)\\
 
-Según el reporte de haskell la expresión que no ha sido
+Según el reporte de \texttt{Haskell} la expresión que no ha sido
 probada es \texttt{ejemplo}, sin embargo, dado que es una
-simple definición de ejemplo se ignora.
+simple definición de ejemplo se ignora. La guardia que "siempre
+es cierta" es el \texttt{n > 0} del código auxiliar que se utilizó
+para repetir código; da un error para números negativos pero
+no interesa para probar las funciones del buffer.\\
+
+Resulta evidente que se pueden incluir algunas pruebas
+unitarias para complementar el código, pero el análisis
+de cobertura de \texttt{Haskell} indica que se logró cubrir
+el código que interesaba.
 }
 }
 \\
