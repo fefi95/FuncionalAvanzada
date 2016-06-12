@@ -8,6 +8,7 @@
 \definecolor{darkgreen}{rgb}{0,0.6,0.1}
 \definecolor{darkgrey}{rgb}{0.4,0.4,0.4}
 \definecolor{lightgrey}{rgb}{0.95,0.95,0.95}
+\definecolor{lightorange}{rgb}{1,0.94,0.9}
 
 
 \usepackage[spanish]{babel}
@@ -38,9 +39,9 @@
 
 \title{CI4251 - Programación Funcional Avanzada \\ Tareas 4}
 
-\author{Ernesto Hernández-Novich\\
-86-17791\\
-\href{mailto:emhn@usb.ve}{<emhn@usb.ve>}}
+\author{Stefani Castellanos\\
+11-11394\\
+\href{mailto:scct95@gmail.com}{<scct95@gmail.com>}}
 
 \date{Junio 11, 2016}
 
@@ -117,5 +118,40 @@ técnica de \emph{dataflow parallelism}, y otra implantación usando
 estrategias de paralelismo. En ambos casos, asegúrese de encontrar
 una solución con un balance de trabajo razonablemente equilibrado
 para dos (2) núcleos de procesamiento.
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Para tener una base de comparación se agrega el merge sort secuencial
+explicado en clase. De esta manera se puede analizar cual ha sido la mejora.
+
+}
+}
+\\
+
+\begin{lstlisting}
+
+> msort []  = []
+> msort [x] = [x]
+> msort xs  = merge (msort miti) (msort mita)
+>             where (miti, mita) = halve xs
+>
+> merge xs [] = xs
+> merge [] ys = ys
+> merge xs@(x:t) ys@(y:u)
+>       | x <= y = x : merge t ys
+>       | otherwise = y : merge xs u
+>
+> halve xs = (ping xs, pong xs)
+>
+> ping []       = []
+> ping [x]      = [x]
+> ping (x:_:xs) = x : ping xs
+>
+> pong []       = []
+> pong [x]      = []
+> pong (_:x:xs) = x : pong xs
+
+\end{lstlisting}
 
 \end{document}
