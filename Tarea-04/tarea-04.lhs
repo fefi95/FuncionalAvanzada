@@ -49,6 +49,14 @@
 
 \pagebreak
 
+\begin{lstlisting}
+
+> import Control.Parallel.Strategies (using, parList, rseq)
+> import Control.Parallel (pseq, par)
+> import System.Environment (getArgs)
+
+\end{lstlisting}
+
 \section{El baño unisex (15 puntos)}
 
 \noindent
@@ -151,6 +159,45 @@ explicado en clase. De esta manera se puede analizar cual ha sido la mejora.
 > pong []       = []
 > pong [x]      = []
 > pong (_:x:xs) = x : pong xs
+>
+
+\end{lstlisting}
+
+\begin{lstlisting}
+
+> msortS []  = []
+> msortS [x] = [x]
+> msortS xs  = merge (msort miti) (msort mita)
+>             where (miti, mita) = halveS xs
+>
+> mergeS xs [] = xs
+> mergeS [] ys = ys
+> mergeS xs@(x:t) ys@(y:u)
+>       | x <= y = x : merge t ys
+>       | otherwise = y : merge xs u
+>
+> halveS xs = (ping xs) `par` (pong xs) `pseq`(ping xs, pong xs)
+>
+> pingS []       = []
+> pingS [x]      = [x]
+> pingS (x:_:xs) = x : ping xs
+>
+> pongS []       = []
+> pongS [x]      = []
+> pongS (_:x:xs) = x : pong xs
+>
+
+\end{lstlisting}
+
+\begin{lstlisting}
+
+> main = do
+>   --(x:_) <- getArgs
+>   let x = "Str"
+>   case x of
+>       "Sec" -> print $ msort [1..100000]
+>       "Str" -> print $ msortS [1..100000]
+>       _     -> putStrLn "Not a valid option, ja ja!"
 
 \end{lstlisting}
 
