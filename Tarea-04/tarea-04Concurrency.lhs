@@ -141,9 +141,9 @@ iniciada la corrida mostrar, permanentemente:
 >                     putStrLn ("Hay 1 " ++ show g
 >                               ++ " en el baño*")
 >                     bathroom g 1 pqueC brC cS cfS
->       Just c' -> do waitFinishCleaning pqueC brC cS cfS
->                     putMVar cfS True
+>       Just c' -> do putMVar cfS True
 >                     putStrLn "Entra limpieza"
+>                     waitFinishCleaning pqueC brC cS cfS
 >                     bathroomHandler pqueC brC cS cfS
 >
 > bathroom :: Genre -> Int -> MVar (Seq GenreInfo) -> Chan String
@@ -178,9 +178,10 @@ iniciada la corrida mostrar, permanentemente:
 >                             putStrLn ("Hay 1 "
 >                                      ++ show g ++ " en el baño**")
 >                             bathroom g 1 pqueC brC cS cfS
->       Just c' -> do waitFinishCleaning pqueC brC cS cfS
->                     putMVar cfS True
+>       Just c' -> do waitTillEveryoneLeaves genre brC n
 >                     putStrLn "Entra limpieza"
+>                     putMVar cfS True
+>                     waitFinishCleaning pqueC brC cS cfS
 >                     bathroomHandler pqueC brC cS cfS
 >
 > takeSeq :: Seq GenreInfo ->
@@ -209,7 +210,8 @@ iniciada la corrida mostrar, permanentemente:
 > waitFinishCleaning pqueC brC cS cfS = do
 >   cf <- takeMVar cfS
 >   case cf of
->       True -> waitFinishCleaning pqueC brC cS cfS
+>       True -> do putMVar cfS True
+>                  waitFinishCleaning pqueC brC cS cfS
 >       False -> bathroomHandler pqueC brC cS cfS
 >
 > cleaningThread cS cfS = do
@@ -238,8 +240,7 @@ iniciada la corrida mostrar, permanentemente:
 >   if g == Cleaning
 >   then forkIO (cleaningThread cS cfS)
 >   else forkIO (genreThread g pqueC brC)
->   r' <- randomRIO (50000, 100000)
->   threadDelay r'
+>   useBathroom
 >   peopleInLine pqueC brC cS cfS
 >
 > people r
