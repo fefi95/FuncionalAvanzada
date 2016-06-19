@@ -49,18 +49,6 @@
 
 \pagebreak
 
-\begin{lstlisting}
-
-> import System.Environment (getArgs)
-> import System.Random (randomRIO)
-> import Control.Concurrent --(putMVar, takeMVar,
->                           -- tryTakeMVar, readChan, writeChan,
->                           -- threadDelay)
-> import Data.Sequence
-> import System.IO.Error (catchIOError)
-
-\end{lstlisting}
-
 \section{El baño unisex (15 puntos)}
 
 \noindent
@@ -118,71 +106,85 @@ iniciada la corrida mostrar, permanentemente:
   para ingresar y mientras torturan a los que aguardan.
 \end{itemize}
 
+\begin{lstlisting}
+
+> import System.Random (randomRIO)
+> import Control.Concurrent --(putMVar, takeMVar,
+>                           -- tryTakeMVar, readChan, writeChan,
+>                           -- threadDelay)
+> import Data.Sequence
+> import System.Environment (getArgs)
+
+\end{lstlisting}
 
 \begin{lstlisting}
 
 > data Genre = Women
 >            | Men
 >            | Cleaning
->            deriving (Show, Eq)
+>            deriving (Eq)
+>
+> instance Show Genre where
+>   show Women = "Mujer"
+>   show Men = "Hombre"
+>   show Cleaning = "Personal Limpieza"
 >
 > newtype GenreInfo = G (MVar Bool, Genre)
 >
 > instance Show GenreInfo where
 >   show (G (mvar, genre)) = show genre
 >
-> bathroomHandler :: MVar (Seq GenreInfo) -> Chan String -> MVar Bool
->                    -> MVar Bool -> IO ()
-> bathroomHandler pqueC brC cS cfS = do
->   c <- tryTakeMVar cS
->   case c of
->       Nothing -> do (mv, g) <- nextInLine pqueC
->                     putMVar mv True
->                     putStrLn ("Hay 1 " ++ show g
->                               ++ " en el baño*")
->                     bathroom g 1 pqueC brC cS cfS
->       Just c' -> do putMVar cfS True
->                     putStrLn "Entra limpieza"
->                     waitFinishCleaning pqueC brC cS cfS
->                     bathroomHandler pqueC brC cS cfS
+> bathroomHandler :: MVar (Seq GenreInfo) -> Chan String -> IO ()
+> bathroomHandler pqueC brC = do
+>   (mv, g) <- nextInLine pqueC
+>   putMVar mv True
+>   case g of
+>       Cleaning -> do putStrLn "Entra limpieza"
+>                      br <- readChan brC
+>                      bathroomHandler pqueC brC
+>       _        -> do showPeopleIn g 1
+>                      bathroom g 1 pqueC brC
 >
 > bathroom :: Genre -> Int -> MVar (Seq GenreInfo) -> Chan String
->             -> MVar Bool -> MVar Bool -> IO ()
-> bathroom genre 3 pqueC brC cS cfS = do
+>             -> IO ()
+> bathroom genre 3 pqueC brC = do
 >   (mv, g) <- nextInLine pqueC
->   if g == genre
->   then do br <- readChan brC
->           putStrLn ("Hay 2 " ++ show g
->                     ++ " en el baño!")
->           putMVar mv True
->           putStrLn ("Hay 3 " ++ show g
->                     ++ " en el baño")
->           bathroom g 3 pqueC brC cS cfS
->   else do waitTillEveryoneLeaves genre brC 3
->           putMVar mv True
->           putStrLn ("Hay 1 "
->                     ++ show g ++ " en el baño***")
->           bathroom g 1 pqueC brC cS cfS
+>   case g of
+>       Cleaning -> do waitTillEveryoneLeaves genre brC 3
+>                      putMVar mv True
+>                      putStrLn "Entra limpieza"
+>                      br <- readChan brC
+>                      putStrLn br
+>                      bathroomHandler pqueC brC
+>       _        -> do if g == genre
+>                      then do br <- readChan brC
+>                              putStrLn br
+>                              showPeopleIn g 2
+>                              putMVar mv True
+>                              showPeopleIn g 3
+>                              bathroom g 3 pqueC brC
+>                      else do waitTillEveryoneLeaves genre brC 3
+>                              putMVar mv True
+>                              showPeopleIn g 1
+>                              bathroom g 1 pqueC brC
 >
-> bathroom genre n pqueC brC cS cfS = do
->   c <- tryTakeMVar cS
->   case c of
->       Nothing -> do (mv, g) <- nextInLine pqueC
->                     if g == genre
->                     then do putMVar mv True
->                             putStrLn ("Hay " ++ show (n+1) ++ " "
->                                      ++ show g ++ " en el baño")
->                             bathroom g (n+1) pqueC brC cS cfS
->                     else do waitTillEveryoneLeaves genre brC n
->                             putMVar mv True
->                             putStrLn ("Hay 1 "
->                                      ++ show g ++ " en el baño**")
->                             bathroom g 1 pqueC brC cS cfS
->       Just c' -> do waitTillEveryoneLeaves genre brC n
->                     putStrLn "Entra limpieza"
->                     putMVar cfS True
->                     waitFinishCleaning pqueC brC cS cfS
->                     bathroomHandler pqueC brC cS cfS
+> bathroom genre n pqueC brC = do
+>   (mv, g) <- nextInLine pqueC
+>   case g of
+>       Cleaning -> do waitTillEveryoneLeaves genre brC n
+>                      putMVar mv True
+>                      putStrLn "Entra limpieza"
+>                      br <- readChan brC
+>                      putStrLn br
+>                      bathroomHandler pqueC brC
+>       _        -> do if g == genre
+>                      then do putMVar mv True
+>                              showPeopleIn g (n + 1)
+>                              bathroom g (n + 1) pqueC brC
+>                      else do waitTillEveryoneLeaves genre brC n
+>                              putMVar mv True
+>                              showPeopleIn g 1
+>                              bathroom g 1 pqueC brC
 >
 > takeSeq :: Seq GenreInfo ->
 >            IO (Seq GenreInfo, Maybe (GenreInfo, Seq GenreInfo))
@@ -199,34 +201,31 @@ iniciada la corrida mostrar, permanentemente:
 >       Nothing -> nextInLine pqueC
 >       Just (G (mv, g), rest) -> do return (mv, g)
 >
+> showPeopleIn genre n = putStrLn ("Hay " ++ show n ++ " "
+>                                 ++ show genre ++ " en el baño")
+>
 > waitTillEveryoneLeaves :: Genre -> Chan String -> Int -> IO ()
-> waitTillEveryoneLeaves g brC 0 = return ()
-> waitTillEveryoneLeaves g brC n = do
+> waitTillEveryoneLeaves genre brC 0 = return ()
+> waitTillEveryoneLeaves genre brC n = do
 >   br <- readChan brC
->   putStrLn ("Hay " ++ show (n-1) ++ " "
->             ++ show g ++ " en el baño!!")
->   waitTillEveryoneLeaves g brC (n-1)
+>   putStrLn br
+>   showPeopleIn genre (n - 1)
+>   waitTillEveryoneLeaves genre brC (n-1)
 >
-> waitFinishCleaning pqueC brC cS cfS = do
->   cf <- takeMVar cfS
->   case cf of
->       True -> do putMVar cfS True
->                  waitFinishCleaning pqueC brC cS cfS
->       False -> bathroomHandler pqueC brC cS cfS
->
-> cleaningThread cS cfS = do
->   putStrLn "Limpieza quiere entrar.."
->   putMVar cS True
->   cf <- takeMVar cfS
+> cleaningThread pqueC brC = do
+>   mv <- newEmptyMVar :: IO (MVar Bool)
+>   modifyMVar_ pqueC (\ss -> return ( G (mv, Cleaning) <| ss))
+>   putStrLn "La limpieza quiere entrar.."
+>   mv' <- takeMVar mv
 >   clean
->   putMVar cfS False
+>   writeChan brC "Listo! Ya Limpie"
 >
 > genreThread genre pqueC brC = do
 >   mv <- newEmptyMVar :: IO (MVar Bool)
 >   modifyMVar_ pqueC (\ss -> return (ss |> G (mv, genre)))
 >   mv' <- takeMVar mv
 >   useBathroom
->   writeChan brC "done"
+>   writeChan brC ("Listo! (" ++ show genre ++ ")")
 >
 > clean = do r <- randomRIO (100000, 500000)
 >            threadDelay r
@@ -234,14 +233,15 @@ iniciada la corrida mostrar, permanentemente:
 > useBathroom = do r <- randomRIO (100000, 500000)
 >                  threadDelay r
 >
-> peopleInLine pqueC brC cS cfS = do
+> peopleInLine pqueC brC = do
 >   r <- randomRIO (0, 1.0) :: IO Double
 >   let g = people r
 >   if g == Cleaning
->   then forkIO (cleaningThread cS cfS)
+>   then forkIO (cleaningThread pqueC brC)
 >   else forkIO (genreThread g pqueC brC)
->   useBathroom
->   peopleInLine pqueC brC cS cfS
+>   r' <- randomRIO (80000, 200000)
+>   threadDelay r'
+>   peopleInLine pqueC brC
 >
 > people r
 >   |r > 0.0 && r < 0.49  = Women
@@ -250,12 +250,16 @@ iniciada la corrida mostrar, permanentemente:
 >   |otherwise = Cleaning
 >
 > main = do
->   pqueC <- newMVar $ empty
->   brC <- newChan
->   cS <- newEmptyMVar :: IO (MVar Bool)
->   cfS <- newEmptyMVar :: IO (MVar Bool)
->   forkIO (peopleInLine pqueC brC cS cfS)
->   bathroomHandler pqueC brC cS cfS
+>   (sim : _) <- getArgs
+>   case sim of
+>       "Clasica" -> do pqueC <- newMVar $ empty
+>                       brC <- newChan
+>                       forkIO (peopleInLine pqueC brC)
+>                       bathroomHandler pqueC brC
+>       "STM"     -> do putStrLn "STM"
+>       _         -> putStrLn ("USO: las simulaciones "
+>                             ++ "disponibles son "
+>                             ++ "\"Clasica\" y \"STM\"")
 
 \end{lstlisting}
 
