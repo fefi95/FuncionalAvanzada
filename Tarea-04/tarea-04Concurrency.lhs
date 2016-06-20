@@ -117,6 +117,15 @@ iniciada la corrida mostrar, permanentemente:
 
 \end{lstlisting}
 
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Para resolver el problema del baño unisex se define
+un tipo de dato para el género de las personas, si
+son mujeres, hombres o personal de limpieza.
+}
+}
+\\
 \begin{lstlisting}
 
 > data Genre = Women
@@ -129,11 +138,56 @@ iniciada la corrida mostrar, permanentemente:
 >   show Men = "Hombre"
 >   show Cleaning = "Personal Limpieza"
 >
+
+\end{lstlisting}
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+También se define un tipo de dato para modelar la información
+que estará en la cola del baño. El MVar de este tipo representa
+el turno de la persona en cola, es decir, cuando se le permitirá
+entrar al baño. El Genre representa el tipo de persona a entrar.
+}
+}
+\\
+
+\begin{lstlisting}
+
 > newtype GenreInfo = G (MVar Bool, Genre)
 >
 > instance Show GenreInfo where
 >   show (G (mvar, genre)) = show genre
 >
+
+\end{lstlisting}
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Se define las funciones relacionados con el manejo de los
+turnos en el baño bathroomHandler y bathroom. La primera
+de estas deja entrar a la primera persona de la cola de
+espera y llama a la función bathroom con el género
+apropiado. \\
+
+bathroom chequea al primero en la cola y actúa según el
+género de los que están en el baño, si son el mismo género
+y no hay más de tres personas dentro de él, los deja pasar.
+De lo contrario espera a que se libere el baño para dejarlo
+pasar.\\
+
+La cola en ambas funciones es representada por pqueC y
+al terminar de "liberar sus demonios" cada persona
+notifica que está abandonando el baño por el canal
+brC.
+
+}
+}
+\\
+
+\begin{lstlisting}
+
 > bathroomHandler :: MVar (Seq GenreInfo) -> Chan String -> IO ()
 > bathroomHandler pqueC brC = do
 >   (mv, g) <- nextInLine pqueC
@@ -185,7 +239,29 @@ iniciada la corrida mostrar, permanentemente:
 >                              putMVar mv True
 >                              showPeopleIn g 1
 >                              bathroom g 1 pqueC brC
->
+
+\end{lstlisting}
+
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Para facilitar la escritura de la funciones anteriores
+se definen las siguientes funciones auxiliares. takeSeq
+toma un elemento de la cola, si hay alguno devuelve la
+cabeza y el resto, si está vació devuelve Nothing.
+
+nextInLine se vale de la función anterior para otorgar
+el turno a la siguiente persona en la cola.
+
+waitTillEveryoneLeaves pretende esperar a que salgan
+todas las personas en el baño.
+}
+}
+\\
+
+\begin{lstlisting}
+
 > takeSeq :: Seq GenreInfo ->
 >            IO (Seq GenreInfo, Maybe (GenreInfo, Seq GenreInfo))
 > takeSeq ss = do
@@ -212,6 +288,25 @@ iniciada la corrida mostrar, permanentemente:
 >   showPeopleIn genre (n - 1)
 >   waitTillEveryoneLeaves genre brC (n-1)
 >
+
+\end{lstlisting}
+
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+cleaningThread y genreThread son las funciones para
+simular en comportamiento de la gente que usa el baño.
+Indican que están en la cola y esperan su turno, hacen
+lo que deben hacer y notifican que se fueron. En el caso
+de la limpieza se colocan al principio de la cola como
+lo exige el enunciado.
+}
+}
+\\
+
+\begin{lstlisting}
+
 > cleaningThread pqueC brC = do
 >   mv <- newEmptyMVar :: IO (MVar Bool)
 >   modifyMVar_ pqueC (\ss -> return ( G (mv, Cleaning) <| ss))
@@ -233,6 +328,22 @@ iniciada la corrida mostrar, permanentemente:
 > useBathroom = do r <- randomRIO (100000, 500000)
 >                  threadDelay r
 >
+
+\end{lstlisting}
+
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+peopleInLine serán la función del hilo que
+crea a las personas. Tiene un delay para evitar
+que la cola de espera crezca demasiado rápido.
+}
+}
+\\
+
+\begin{lstlisting}
+
 > peopleInLine pqueC brC = do
 >   r <- randomRIO (0, 1.0) :: IO Double
 >   let g = people r
