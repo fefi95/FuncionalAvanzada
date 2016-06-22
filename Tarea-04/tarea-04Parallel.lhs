@@ -51,10 +51,14 @@
 
 \begin{lstlisting}
 
+> {-# LANGUAGE BangPatterns #-}
+
 > import Control.Parallel.Strategies (using, parList, rseq, r0, parListChunk, parTuple2, rpar, rparWith)
 > import Control.Parallel (pseq, par)
 > import System.Environment (getArgs)
 > import qualified Control.Monad.Par as P
+> import Criterion
+> import Criterion.Main
 
 \end{lstlisting}
 
@@ -113,16 +117,10 @@ explicado en clase. De esta manera se puede analizar cual ha sido la mejora.
 > msortS 0 [x] = [x]
 > msortS 0 xs = merge (msortS 0 miti) (msortS 0 mita)
 >              where (miti, mita) = halveS xs
-> msortS n xs = mitiSort `par` mitaSort `pseq` merge mitiSort mitaSort
+> msortS !n xs = mitiSort `par` mitaSort `pseq` merge mitiSort mitaSort
 >              where (miti, mita) = halveS xs
 >                    mitiSort = (msortS (n-1) miti)
 >                    mitaSort = (msortS (n-1) mita)
->
-> mergeS xs [] = xs
-> mergeS [] ys = ys
-> mergeS xs@(x:t) ys@(y:u)
->       | x <= y = x : mergeS t ys
->       | otherwise = y : mergeS xs u
 >
 > halveS = go ([], [])
 >    where go (eac, oac) []       = (eac, oac)
@@ -133,34 +131,27 @@ explicado en clase. De esta manera se puede analizar cual ha sido la mejora.
 
 \begin{lstlisting}
 
-> msortP []  = []
-> msortP [x] = [x]
-> msortP xs  = merge (msortP miti) (msortP mita)
->              where (miti, mita) = halveP xs
->   --runPar $ do
->   --[miti, mita, sortMiti, sortMita] <- sequence $ replicate 2 P.new
->   --P.fork $ do P.put miti miti'
->   --            P.put mita mita'
->   --            where (miti', mita') = halveP xs
+> msortPaux []  = return []
+> msortPaux [x] = return [x]
+> msortPaux xs  = do
+>   mitades <- P.pval $ halveS xs
+>   (miti, mita) <- P.get mitades
+>   sortMiti <- P.spawn $ msortPaux miti
+>   sortMita <- P.spawn $ msortPaux mita
+>   sMiti <- P.get sortMiti
+>   sMita <- P.get sortMita
+>   return $ merge sMiti sMita
+>
+> msortP xs = P.runPar $ msortPaux xs
+>   --[sortMiti, sortMita, xs'] <- sequence $ replicate 3 P.new
+>   --let (miti, mita) = halve xs
 >   --P.fork $ P.put sortMiti (msortP miti)
 >   --P.fork $ P.put sortMita (msortP mita)
->   --get $ merge sortMiti sortMita
+>   --P.fork $ do sMiti <- P.get sortMiti
+>   --            sMita <- P.get sortMita
+>   --            P.put xs' (merge sMiti sMita)
+>   --P.get xs'
 >
-> mergeP xs [] = xs
-> mergeP [] ys = ys
-> mergeP xs@(x:t) ys@(y:u)
->       | x <= y = x : mergeP t ys
->       | otherwise = y : mergeP xs u
->
-> halveP xs = (pingP xs, pongP xs)
->
-> pingP []       = []
-> pingP [x]      = [x]
-> pingP (x:_:xs) = x : ping xs
->
-> pongP []       = []
-> pongP [x]      = []
-> pongP (_:x:xs) = x : pong xs
 
 \end{lstlisting}
 
@@ -171,7 +162,7 @@ explicado en clase. De esta manera se puede analizar cual ha sido la mejora.
 >   case x of
 >       "Sec" -> print $ msort [1..100000]
 >       "Str" -> print $ msortS 8 [1..100000]
->       "Par" -> print $ msortP [1..100000]
+>       "Par" -> print $ msortP ([1..100000] :: [Int])
 >       _     -> putStrLn "Not a valid option, ja ja!"
 
 \end{lstlisting}
