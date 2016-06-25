@@ -118,15 +118,29 @@ iniciada la corrida mostrar, permanentemente:
 
 \end{lstlisting}
 
+\section{General}
+
 \noindent
 \colorbox{lightorange}{
 \parbox{\linewidth}{
 Para resolver el problema del baño unisex se define
 un tipo de dato para el género de las personas, si
-son mujeres, hombres o personal de limpieza.
+son mujeres, hombres o personal de limpieza.\\
+
+Se define una manera de mostar las personas en la
+cola y funciones que representen el tiempo que las
+personas utilizan el baño.\\
+
+\texttt{people} es la función que escoge un género
+con las probabilidades indicadas en el enunciado.\\
+
+\texttt{clean} y \texttt{useBathroom} son las actividades
+que se puenden realizar en el baño y que toman un tiempo
+hacerlas.\\
 }
 }
 \\
+
 \begin{lstlisting}
 
 > data Genre = Women
@@ -139,21 +153,89 @@ son mujeres, hombres o personal de limpieza.
 >   show Men = "Hombre"
 >   show Cleaning = "Personal Limpieza"
 >
+> showPeopleIn genre n = putStrLn ("Hay " ++ show n ++ " "
+>                                 ++ show genre ++ " en el baño")
+>
+> showLine q = putStrLn $ "La cola de espera es:" ++ show q
 
 \end{lstlisting}
+
+\pagebreak
+
+\begin{lstlisting}
+
+> clean = do r <- randomRIO (100000, 500000)
+>            threadDelay r
+>
+> useBathroom = do r <- randomRIO (100000, 500000)
+>                  threadDelay r
+>
+> people r
+>   |r > 0.0 && r < 0.49  = Women
+>   |r > 0.49 && r < 0.98 = Men
+>   |r > 0.98 && r < 1.0  = Cleaning
+>   |otherwise = Cleaning
+>
+> main = do
+>   (sim : _) <- getArgs
+>   case sim of
+>       "Clasica" -> do pqueC <- newMVar $ empty
+>                       brC <- newChan
+>                       forkIO (peopleInLine pqueC brC)
+>                       bathroomHandler pqueC brC
+>       "STM"     -> do pqueT <- newTVarIO $ empty
+>                       brT <- atomically $ newTChan
+>                       forkIO (peopleInLineT pqueT brT)
+>                       bathroomHandlerT pqueT brT
+>       "T"       -> do pque2 <- newTVarIO $ empty
+>                       brT <- atomically $ newTChan
+>                       tic <- newTVarIO 1
+>                       ser <- newTVarIO 0
+>                       forkIO (peopleInLine2 tic ser pque2 brT)
+>                       bathroomHandler2 ser pque2 brT
+>       _         -> putStrLn ("USO: las simulaciones "
+>                             ++ "disponibles son "
+>                             ++ "\"Clasica\" y \"STM\"")
+
+\end{lstlisting}
+
+\section{El baño unisex con MVar}
 
 \noindent
 \colorbox{lightorange}{
 \parbox{\linewidth}{
-También se define un tipo de dato para modelar la información
-que estará en la cola del baño. El MVar de este tipo representa
-el turno de la persona en cola, es decir, cuando se le permitirá
-entrar al baño. El Genre representa el tipo de persona a entrar.
+\textbf{Semántica de la solución:}\\
+
+El baño tiene una señal
+que le indica a la siguiente persona en línea que puede
+pasar y únicamente ella.\\
+
+Cada persona se coloca en la fila y espera a que la señal
+en el baño le indique que puede pasar.\\
+
+Los turnos se logran utilizando los \texttt{MVar} como mutex,
+uno por cada persona; el baño sólo escribe en el \texttt{MVar}
+de la persona que está al principio de la línea
+para dejarla pasar.\\
+
+Esta solución permite preservar el orden de la cola y, al
+no tener una variable compartida por cada persona en la cola,
+reduce el riesgo de deadlocks, ya que los únicos que pueden
+acceder al turno de una persona específica son el baño y
+la persona que lo pidió. \\
+
+Se define un tipo de dato para modelar la información
+que estará en la cola del baño. El \texttt{MVar} de este tipo
+representa el turno de la persona en cola, es decir,
+cuando se le permitirá entrar al baño. El \texttt{Genre}
+representa el tipo de persona a entrar.\\
+
+\texttt{LineM} representa la cola de espera en el baño
+y \texttt{DoneM} es el canal por el cual cada persona
+indica que terminó de "liberar sus demonios".
 }
 }
 \\
-
-\section{El baño unisex con MVar}
 
 \begin{lstlisting}
 
@@ -162,36 +244,32 @@ entrar al baño. El Genre representa el tipo de persona a entrar.
 > instance Show GenreInfo where
 >   show (G (mvar, genre)) = show genre
 >
+> type LineM = MVar (Seq GenreInfo)
+> type DoneM = Chan String
 
 \end{lstlisting}
 
 \noindent
 \colorbox{lightorange}{
 \parbox{\linewidth}{
-Se define las funciones relacionados con el manejo de los
-turnos en el baño bathroomHandler y bathroom. La primera
-de estas deja entrar a la primera persona de la cola de
-espera y llama a la función bathroom con el género
+Se definen las funciones relacionadas con el manejo de los
+turnos en el baño \texttt{bathroomHandler} y \texttt{bathroom}. La primera
+de estas deja entrar a la persona al principio de la cola de
+espera y llama a la función \texttt{bathroom} con el género
 apropiado. \\
 
-bathroom chequea al primero en la cola y actúa según el
+\texttt{bathroom} chequea al primero en la cola y actúa según el
 género de los que están en el baño, si son el mismo género
 y no hay más de tres personas dentro de él, los deja pasar.
 De lo contrario espera a que se libere el baño para dejarlo
 pasar.\\
-
-La cola en ambas funciones es representada por pqueC y
-al terminar de "liberar sus demonios" cada persona
-notifica que está abandonando el baño por el canal
-brC.
-
 }
 }
 \\
 
 \begin{lstlisting}
 
-> bathroomHandler :: MVar (Seq GenreInfo) -> Chan String -> IO ()
+> bathroomHandler :: LineM -> DoneM -> IO ()
 > bathroomHandler pqueC brC = do
 >   (mv, g) <- nextInLine pqueC
 >   putMVar mv True
@@ -202,7 +280,7 @@ brC.
 >       _        -> do showPeopleIn g 1
 >                      bathroom g 1 pqueC brC
 >
-> bathroom :: Genre -> Int -> MVar (Seq GenreInfo) -> Chan String
+> bathroom :: Genre -> Int -> LineM -> DoneM
 >             -> IO ()
 > bathroom genre 3 pqueC brC = do
 >   (mv, g) <- nextInLine pqueC
@@ -250,14 +328,14 @@ brC.
 \colorbox{lightorange}{
 \parbox{\linewidth}{
 Para facilitar la escritura de la funciones anteriores
-se definen las siguientes funciones auxiliares. takeSeq
+se definen las siguientes funciones auxiliares. \texttt{takeSeq}
 toma un elemento de la cola, si hay alguno devuelve la
-cabeza y el resto, si está vació devuelve Nothing.
+cabeza y el resto, si está vació devuelve \texttt{Nothing}.\\
 
-nextInLine se vale de la función anterior para otorgar
-el turno a la siguiente persona en la cola.
+\texttt{nextInLine} se vale de la función anterior para otorgar
+el turno a la siguiente persona en la cola.\\
 
-waitTillEveryoneLeaves pretende esperar a que salgan
+\texttt{waitTillEveryoneLeaves} pretende esperar a que salgan
 todas las personas en el baño.
 }
 }
@@ -274,16 +352,14 @@ todas las personas en el baño.
 >                               ++ show ss)
 >                      return (xs, Just (x, xs))
 >
+> nextInLine :: LineM -> IO (MVar Bool, Genre)
 > nextInLine pqueC = do
 >   m <- modifyMVar pqueC takeSeq
 >   case m of
 >       Nothing -> nextInLine pqueC
 >       Just (G (mv, g), rest) -> do return (mv, g)
 >
-> showPeopleIn genre n = putStrLn ("Hay " ++ show n ++ " "
->                                 ++ show genre ++ " en el baño")
->
-> waitTillEveryoneLeaves :: Genre -> Chan String -> Int -> IO ()
+> waitTillEveryoneLeaves :: Genre -> DoneM -> Int -> IO ()
 > waitTillEveryoneLeaves genre brC 0 = return ()
 > waitTillEveryoneLeaves genre brC n = do
 >   br <- readChan brC
@@ -298,18 +374,19 @@ todas las personas en el baño.
 \noindent
 \colorbox{lightorange}{
 \parbox{\linewidth}{
-cleaningThread y genreThread son las funciones para
+\texttt{cleaningThread} y \texttt{genreThread} son las funciones para
 simular en comportamiento de la gente que usa el baño.
 Indican que están en la cola y esperan su turno, hacen
 lo que deben hacer y notifican que se fueron. En el caso
 de la limpieza se colocan al principio de la cola como
-lo exige el enunciado.
+exige el enunciado.
 }
 }
 \\
 
 \begin{lstlisting}
 
+> cleaningThread :: LineM -> DoneM -> IO()
 > cleaningThread pqueC brC = do
 >   mv <- newEmptyMVar :: IO (MVar Bool)
 >   modifyMVar_ pqueC (\ss -> return ( G (mv, Cleaning) <| ss))
@@ -318,27 +395,20 @@ lo exige el enunciado.
 >   clean
 >   writeChan brC "Listo! Ya Limpie"
 >
+> genreThread :: Genre -> LineM -> DoneM -> IO()
 > genreThread genre pqueC brC = do
 >   mv <- newEmptyMVar :: IO (MVar Bool)
 >   modifyMVar_ pqueC (\ss -> return (ss |> G (mv, genre)))
 >   mv' <- takeMVar mv
 >   useBathroom
 >   writeChan brC ("Listo! (" ++ show genre ++ ")")
->
-> clean = do r <- randomRIO (100000, 500000)
->            threadDelay r
->
-> useBathroom = do r <- randomRIO (100000, 500000)
->                  threadDelay r
->
 
 \end{lstlisting}
-
 
 \noindent
 \colorbox{lightorange}{
 \parbox{\linewidth}{
-peopleInLine serán la función del hilo que
+\texttt{peopleInLine} serán la función del hilo que
 crea a las personas. Tiene un delay para evitar
 que la cola de espera crezca demasiado rápido.
 }
@@ -356,16 +426,10 @@ que la cola de espera crezca demasiado rápido.
 >   r' <- randomRIO (80000, 200000)
 >   threadDelay r'
 >   peopleInLine pqueC brC
->
-> people r
->   |r > 0.0 && r < 0.49  = Women
->   |r > 0.49 && r < 0.98 = Men
->   |r > 0.98 && r < 1.0  = Cleaning
->   |otherwise = Cleaning
->
 
 \end{lstlisting}
 
+\pagebreak
 \section{El baño unisex con TVar}
 
 \begin{lstlisting}
@@ -539,6 +603,9 @@ que la cola de espera crezca demasiado rápido.
 >                      if s' >= t then return ()
 >                      else retry
 >
+> type LineT = TVar (Seq GenreInfo2)
+> type DoneT = TChan String
+>
 > bathroomHandler2 ser pqueT brT = do
 >   (pque, (t, g)) <- atomically $ nextInLine2 pqueT
 >   putStrLn ("La cola de espera es:" ++ show pque)
@@ -628,27 +695,5 @@ que la cola de espera crezca demasiado rápido.
 
 \end{lstlisting}
 
-> main = do
->   (sim : _) <- getArgs
->   case sim of
->       "Clasica" -> do pqueC <- newMVar $ empty
->                       brC <- newChan
->                       forkIO (peopleInLine pqueC brC)
->                       bathroomHandler pqueC brC
->       "STM"     -> do pqueT <- newTVarIO $ empty
->                       brT <- atomically $ newTChan
->                       forkIO (peopleInLineT pqueT brT)
->                       bathroomHandlerT pqueT brT
->       "T"       -> do pque2 <- newTVarIO $ empty
->                       brT <- atomically $ newTChan
->                       tic <- newTVarIO 1
->                       ser <- newTVarIO 0
->                       forkIO (peopleInLine2 tic ser pque2 brT)
->                       bathroomHandler2 ser pque2 brT
->       _         -> putStrLn ("USO: las simulaciones "
->                             ++ "disponibles son "
->                             ++ "\"Clasica\" y \"STM\"")
-
-\end{lstlisting}
 
 \end{document}
