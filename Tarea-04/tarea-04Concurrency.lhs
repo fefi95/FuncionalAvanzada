@@ -162,6 +162,16 @@ hacerlas.\\
 
 \pagebreak
 
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+El \texttt{main} se encarga de escoger entre las
+simulaciones disponibles e inicializa la cola, el canal
+de salida y, en el caso de STM, los tickets y a quienes se
+atenderán.
+}
+}
+\\
 \begin{lstlisting}
 
 > clean = do r <- randomRIO (100000, 500000)
@@ -183,11 +193,7 @@ hacerlas.\\
 >                       brC <- newChan
 >                       forkIO (peopleInLine pqueC brC)
 >                       bathroomHandler pqueC brC
->       "STM"     -> do pqueT <- newTVarIO $ empty
->                       brT <- atomically $ newTChan
->                       forkIO (peopleInLineT pqueT brT)
->                       bathroomHandlerT pqueT brT
->       "T"       -> do pque2 <- newTVarIO $ empty
+>       "STM"     -> do pque2 <- newTVarIO $ empty
 >                       brT <- atomically $ newTChan
 >                       tic <- newTVarIO 1
 >                       ser <- newTVarIO 0
@@ -432,163 +438,36 @@ que la cola de espera crezca demasiado rápido.
 \pagebreak
 \section{El baño unisex con TVar}
 
-\begin{lstlisting}
-
-> newtype GenreInfoT = T (TVar Bool, Genre)
->
-> instance Show GenreInfoT where
->   show (T (mvar, genre)) = show genre
->
->
-> bathroomHandlerT :: TVar (Seq GenreInfoT) -> TChan String -> IO ()
-> bathroomHandlerT pqueC brC = do
->   (pque, (mv, g)) <- atomically $ nextInLineT pqueC
->   putStrLn ("La cola de espera es:" ++ show pque)
->   atomically $ writeTVar mv True
->   case g of
->       Cleaning -> do putStrLn "Entra limpieza"
->                      br <- atomically $ readTChan brC
->                      bathroomHandlerT pqueC brC
->       _        -> do showPeopleIn g 1
->                      bathroomT g 1 pqueC brC
->
-> bathroomT :: Genre -> Int -> TVar (Seq GenreInfoT) -> TChan String
->             -> IO ()
-> bathroomT genre 3 pqueC brC = do
->   (pque, (mv, g)) <- atomically $ nextInLineT pqueC
->   putStrLn ("La cola de espera es:" ++ show pque)
->   case g of
->       Cleaning -> do waitTillEveryoneLeavesT genre brC 3
->                      atomically $ writeTVar mv True
->                      putStrLn "Entra limpieza"
->                      br <- atomically $ readTChan brC
->                      putStrLn br
->                      bathroomHandlerT pqueC brC
->       _        -> do if g == genre
->                      then do br <- atomically $ readTChan brC
->                              putStrLn br
->                              showPeopleIn g 2
->                              atomically $ writeTVar mv True
->                              showPeopleIn g 3
->                              bathroomT g 3 pqueC brC
->                      else do waitTillEveryoneLeavesT genre brC 3
->                              atomically $ writeTVar mv True
->                              showPeopleIn g 1
->                              bathroomT g 1 pqueC brC
->
-> bathroomT genre n pqueC brC = do
->   (pque, (mv, g)) <- atomically $ nextInLineT pqueC
->   putStrLn ("La cola de espera es:" ++ show pque)
->   case g of
->       Cleaning -> do waitTillEveryoneLeavesT genre brC n
->                      atomically $ writeTVar mv True
->                      putStrLn "Entra limpieza"
->                      br <- atomically $ readTChan brC
->                      putStrLn br
->                      bathroomHandlerT pqueC brC
->       _        -> do if g == genre
->                      then do atomically $ writeTVar mv True
->                              showPeopleIn g (n + 1)
->                              bathroomT g (n + 1) pqueC brC
->                      else do waitTillEveryoneLeavesT genre brC n
->                              atomically $ writeTVar mv True
->                              showPeopleIn g 1
->                              bathroomT g 1 pqueC brC
-
-\end{lstlisting}
-
-
 \noindent
 \colorbox{lightorange}{
 \parbox{\linewidth}{
+\textbf{Semántica de la solución:}\\
+
+El baño dispone de una máquina que dispensa tickets.
+Cada persona toma un ticket y se pone en la cola,
+un cartel en el baño indica el número de ticket que
+se atenderá, la persona con este ticket (o menor) puede
+acceder al baño.\\
+
+\texttt{Ticket} es la variable compartida por todas las
+personas para que tomen tomen su turno, cada vez que
+alguien agarra un ticket usando \texttt{takeTicket} el número
+se incrementa.
+
+\texttt{Serve} representa el número que está dispuesto
+a atender el baño, también es compartida por todos y cada
+persona espera a que el número corresponda con su ticket
+con la función \texttt{wait2BServe}.
+
+\texttt{LineT} y \texttt{DoneT} son análogos a \texttt{LineM}
+y \texttt{DoneM} pero utilizando \texttt{TVar}
+
 }
 }
 \\
 
 \begin{lstlisting}
 
-> takeSeqP ss = case viewl ss of
->                    EmptyL  -> (ss, Nothing)
->                    x :< xs -> do (xs, Just (x, xs))
->
-> nextInLineT pqueC = do
->   q <- readTVar pqueC
->   let (q', m) = takeSeqP q
->   writeTVar pqueC q'
->   case m of
->       Nothing -> retry
->       Just (T (mv, g), rest) -> do return (q, (mv, g))
->
-> waitTillEveryoneLeavesT :: Genre -> TChan String -> Int -> IO ()
-> waitTillEveryoneLeavesT genre brC 0 = return ()
-> waitTillEveryoneLeavesT genre brC n = do
->   br <- atomically $ readTChan brC
->   putStrLn br
->   showPeopleIn genre (n - 1)
->   waitTillEveryoneLeavesT genre brC (n-1)
->
-
-\end{lstlisting}
-
-
-\noindent
-\colorbox{lightorange}{
-\parbox{\linewidth}{
-}
-}
-\\
-
-\begin{lstlisting}
-
-> unlock tv = do b <- readTVar tv
->                if b then return()
->                else retry
->
-> cleaningThreadT pqueC brC = do
->   mv <- newTVarIO False
->   atomically $ modifyTVar pqueC (\ss -> ( T (mv, Cleaning) <| ss))
->   putStrLn "La limpieza quiere entrar.."
->   mv' <- atomically $ unlock mv
->   clean
->   atomically $ writeTChan brC "Listo! Ya Limpie"
->
-> genreThreadT genre pqueC brC = do
->   mv <- newTVarIO False
->   atomically $ modifyTVar pqueC (\ss -> (ss |> T (mv, genre)))
->   mv' <- atomically $ unlock mv
->   useBathroom
->   atomically $ writeTChan brC ("Listo! (" ++ show genre ++ ")")
-
-\end{lstlisting}
-
-
-\noindent
-\colorbox{lightorange}{
-\parbox{\linewidth}{
-peopleInLine serán la función del hilo que
-crea a las personas. Tiene un delay para evitar
-que la cola de espera crezca demasiado rápido.
-}
-}
-\\
-
-\begin{lstlisting}
-
-> peopleInLineT pqueC brC = do
->   r <- randomRIO (0, 1.0) :: IO Double
->   let g = people r
->   if g == Cleaning
->   then forkIO (cleaningThreadT pqueC brC)
->   else forkIO (genreThreadT g pqueC brC)
->   r' <- randomRIO (80000, 200000)
->   threadDelay r'
->   peopleInLineT pqueC brC
-
-\end{lstlisting}
-
-\begin{lstlisting}
-
-> ------------------------------------------------------------------------ intento
 > newtype GenreInfo2 = I (Int, Genre) deriving Show
 >
 > type Ticket = TVar Int -- Numero de ticket
@@ -605,10 +484,25 @@ que la cola de espera crezca demasiado rápido.
 >
 > type LineT = TVar (Seq GenreInfo2)
 > type DoneT = TChan String
->
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+
+\texttt{bathroomHandler2} y \texttt{bathroom2} cuentan
+con casi la misma semántica que \texttt{bathroomHandler} y
+\texttt{bathroom} respectivamente. Su única diferencia es que
+los turnos se asignan mediante el número de ticket de la persona
+en cola y no con un mutex.
+}
+}
+\\
+
+\begin{lstlisting}
+
 > bathroomHandler2 ser pqueT brT = do
 >   (pque, (t, g)) <- atomically $ nextInLine2 pqueT
->   putStrLn ("La cola de espera es:" ++ show pque)
+>   showLine pque
 >   atomically $ writeTVar ser t
 >   case g of
 >       Cleaning -> do putStrLn "Entra limpieza"
@@ -619,7 +513,7 @@ que la cola de espera crezca demasiado rápido.
 >
 > bathroom2 genre 3 ser pqueT brT = do
 >   (pque, (t, g)) <- atomically $ nextInLine2 pqueT
->   putStrLn ("La cola de espera es:" ++ show pque)
+>   showLine pque
 >   case g of
 >       Cleaning -> do waitTillEveryoneLeavesT genre brT 3
 >                      atomically $ writeTVar ser t
@@ -641,7 +535,7 @@ que la cola de espera crezca demasiado rápido.
 >
 > bathroom2 genre n ser pqueT brT = do
 >   (pque, (t, g)) <- atomically $ nextInLine2 pqueT
->   putStrLn ("La cola de espera es:" ++ show pque)
+>   showLine pque
 >   case g of
 >       Cleaning -> do waitTillEveryoneLeavesT genre brT n
 >                      atomically $ writeTVar ser t
@@ -657,6 +551,34 @@ que la cola de espera crezca demasiado rápido.
 >                              atomically $ writeTVar ser t
 >                              showPeopleIn g 1
 >                              bathroom2 g 1 ser pqueT brT
+
+\end{lstlisting}
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+\texttt{waitTillEveryoneLeavesT} es análoga a \texttt{waitTillEveryoneLeavesT}
+usando \texttt{TVar}. \texttt{takeSeqP} es la versión pura de \texttt{takeSeq}
+para extraer la primera persona de la lista y usarla en \texttt{nextInLine2}
+que modifica la cola.
+
+}
+}
+\\
+
+\begin{lstlisting}
+
+> waitTillEveryoneLeavesT :: Genre -> TChan String -> Int -> IO ()
+> waitTillEveryoneLeavesT genre brC 0 = return ()
+> waitTillEveryoneLeavesT genre brC n = do
+>   br <- atomically $ readTChan brC
+>   putStrLn br
+>   showPeopleIn genre (n - 1)
+>   waitTillEveryoneLeavesT genre brC (n-1)
+>
+> takeSeqP ss = case viewl ss of
+>                    EmptyL  -> (ss, Nothing)
+>                    x :< xs -> do (xs, Just (x, xs))
 >
 > nextInLine2 pqueC = do
 >   q <- readTVar pqueC
@@ -665,7 +587,20 @@ que la cola de espera crezca demasiado rápido.
 >   case m of
 >       Nothing -> retry
 >       Just (I (t, g), rest) -> do return (q, (t, g))
->
+
+\end{lstlisting}
+
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+\texttt{cleaningThread2}, \texttt{genreThread2} y \texttt{peopleInLine2}
+son análogas a aquellas en la sección \texttt{MVar} que poseen el mismo nombre.
+}
+}
+\\
+
+\begin{lstlisting}
+
 > cleaningThread2 ser pqueT brT = do
 >   atomically $ modifyTVar pqueT (\ss -> ( I (1, Cleaning) <| ss))
 >   putStrLn "La limpieza quiere entrar.."
