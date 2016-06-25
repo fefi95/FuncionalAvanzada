@@ -522,7 +522,111 @@ que la cola de espera crezca demasiado rápido.
 
 \end{lstlisting}
 
+\begin{lstlisting}
 
+> ------------------------------------------------------------------------ intento
+> newtype GenreInfo2 = I (Int, Genre) deriving Show
+>
+> type Ticket = TVar Int -- Numero de ticket
+>
+> takeTicket t = do i <- readTVar t
+>                   writeTVar t (i + 1)
+>                   return(i)
+>
+> type Serve = TVar Int -- Numero de ticket de persona a atender
+>
+> wait2BServe s t = do s' <- readTVar s
+>                      if s' >= t then return ()
+>                      else retry
+>
+> bathroomHandler2 ser pqueT brT = do
+>   (pque, (t, g)) <- atomically $ nextInLine2 pqueT
+>   putStrLn ("La cola de espera es:" ++ show pque)
+>   atomically $ writeTVar ser t
+>   case g of
+>       Cleaning -> do putStrLn "Entra limpieza"
+>                      br <- atomically $ readTChan brT
+>                      bathroomHandler2 ser pqueT brT
+>       _        -> do showPeopleIn g 1
+>                      bathroom2 g 1 ser pqueT brT
+>
+> bathroom2 genre 3 ser pqueT brT = do
+>   (pque, (t, g)) <- atomically $ nextInLine2 pqueT
+>   putStrLn ("La cola de espera es:" ++ show pque)
+>   case g of
+>       Cleaning -> do waitTillEveryoneLeavesT genre brT 3
+>                      atomically $ writeTVar ser t
+>                      putStrLn "Entra limpieza"
+>                      br <- atomically $ readTChan brT
+>                      putStrLn br
+>                      bathroomHandler2 ser pqueT brT
+>       _        -> do if g == genre
+>                      then do br <- atomically $ readTChan brT
+>                              putStrLn br
+>                              showPeopleIn g 2
+>                              atomically $ writeTVar ser t
+>                              showPeopleIn g 3
+>                              bathroom2 g 3 ser pqueT brT
+>                      else do waitTillEveryoneLeavesT genre brT 3
+>                              atomically $ writeTVar ser t
+>                              showPeopleIn g 1
+>                              bathroom2 g 1 ser pqueT brT
+>
+> bathroom2 genre n ser pqueT brT = do
+>   (pque, (t, g)) <- atomically $ nextInLine2 pqueT
+>   putStrLn ("La cola de espera es:" ++ show pque)
+>   case g of
+>       Cleaning -> do waitTillEveryoneLeavesT genre brT n
+>                      atomically $ writeTVar ser t
+>                      putStrLn "Entra limpieza"
+>                      br <- atomically $ readTChan brT
+>                      putStrLn br
+>                      bathroomHandler2 ser pqueT brT
+>       _        -> do if g == genre
+>                      then do atomically $ writeTVar ser t
+>                              showPeopleIn g (n + 1)
+>                              bathroom2 g (n + 1) ser pqueT brT
+>                      else do waitTillEveryoneLeavesT genre brT n
+>                              atomically $ writeTVar ser t
+>                              showPeopleIn g 1
+>                              bathroom2 g 1 ser pqueT brT
+>
+> nextInLine2 pqueC = do
+>   q <- readTVar pqueC
+>   let (q', m) = takeSeqP q
+>   writeTVar pqueC q'
+>   case m of
+>       Nothing -> retry
+>       Just (I (t, g), rest) -> do return (q, (t, g))
+>
+> cleaningThread2 ser pqueT brT = do
+>   atomically $ modifyTVar pqueT (\ss -> ( I (1, Cleaning) <| ss))
+>   putStrLn "La limpieza quiere entrar.."
+>   atomically $ wait2BServe ser 1
+>   useBathroom
+>   atomically $ writeTChan brT "Listo! Ya Limpie"
+>
+> genreThread2 :: Genre -> Ticket -> Serve -> TVar (Seq GenreInfo2)
+>                 -> TChan String -> IO ()
+> genreThread2 genre tic ser pqueT brT = do
+>   t <- atomically $ takeTicket tic
+>   atomically $ modifyTVar pqueT (\ss -> (ss |> I (t, genre)))
+>   atomically $ wait2BServe ser t
+>   putStrLn $ show genre ++ show t ++" entro al ba;o"
+>   useBathroom
+>   atomically $ writeTChan brT ("Listo! (" ++ show genre ++ ")")
+>
+> peopleInLine2 tic ser pqueT brT = do
+>   r <- randomRIO (0, 1.0) :: IO Double
+>   let g = people r
+>   if g == Cleaning
+>   then forkIO (cleaningThread2 ser pqueT brT)
+>   else forkIO (genreThread2 g tic ser pqueT brT)
+>   r' <- randomRIO (80000, 200000)
+>   threadDelay r'
+>   peopleInLine2 tic ser pqueT brT
+
+\end{lstlisting}
 
 > main = do
 >   (sim : _) <- getArgs
@@ -535,6 +639,12 @@ que la cola de espera crezca demasiado rápido.
 >                       brT <- atomically $ newTChan
 >                       forkIO (peopleInLineT pqueT brT)
 >                       bathroomHandlerT pqueT brT
+>       "T"       -> do pque2 <- newTVarIO $ empty
+>                       brT <- atomically $ newTChan
+>                       tic <- newTVarIO 1
+>                       ser <- newTVarIO 0
+>                       forkIO (peopleInLine2 tic ser pque2 brT)
+>                       bathroomHandler2 ser pque2 brT
 >       _         -> putStrLn ("USO: las simulaciones "
 >                             ++ "disponibles son "
 >                             ++ "\"Clasica\" y \"STM\"")
