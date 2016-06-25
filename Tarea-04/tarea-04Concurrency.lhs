@@ -370,100 +370,66 @@ que la cola de espera crezca demasiado rápido.
 
 \begin{lstlisting}
 
-> type Semaphore = TVar Bool
+> newtype GenreInfoT = T (TVar Bool, Genre)
 >
-> newSem available = newTVarIO available
+> instance Show GenreInfoT where
+>   show (T (mvar, genre)) = show genre
 >
-> lock sem = do b <- readTVar sem
->               if b then writeTVar sem False
->               else retry
 >
-> unlock sem = writeTVar sem True
->
-> waitUnlock sem = do b <- readTVar sem
->                     if b then return()
->                     else retry
-
-\end{lstlisting}
-
-\begin{lstlisting}
-
-> bathroomHandlerT :: Semaphore -> Semaphore -> TVar (Seq Genre) -> TChan String -> IO ()
-> bathroomHandlerT wS mS pqueC brC = do
->   (g, pque) <- atomically $ nextInLineT pqueC
+> bathroomHandlerT :: TVar (Seq GenreInfoT) -> TChan String -> IO ()
+> bathroomHandlerT pqueC brC = do
+>   (pque, (mv, g)) <- atomically $ nextInLineT pqueC
 >   putStrLn ("La cola de espera es:" ++ show pque)
+>   atomically $ writeTVar mv True
 >   case g of
->       Cleaning -> do putStrLn "Entra limpieza2"
->                      atomically $ lock mS >> lock wS
+>       Cleaning -> do putStrLn "Entra limpieza"
 >                      br <- atomically $ readTChan brC
->                      atomically $ unlock mS >> unlock wS
->                      bathroomHandlerT wS mS pqueC brC
->       Women    -> do atomically $ lock mS
->       Men      -> do atomically $ lock wS
->   showPeopleIn g 1
->   bathroomT g 1 wS mS pqueC brC
+>                      bathroomHandlerT pqueC brC
+>       _        -> do showPeopleIn g 1
+>                      bathroomT g 1 pqueC brC
 >
-> bathroomT :: Genre -> Int -> Semaphore -> Semaphore -> TVar (Seq Genre)
->              -> TChan String -> IO ()
-> bathroomT genre 3 wS mS pqueC brC = do
->   atomically $ lock wS
->   atomically $ lock wS
->   (g, pque) <- atomically $ nextInLineT pqueC
+> bathroomT :: Genre -> Int -> TVar (Seq GenreInfoT) -> TChan String
+>             -> IO ()
+> bathroomT genre 3 pqueC brC = do
+>   (pque, (mv, g)) <- atomically $ nextInLineT pqueC
 >   putStrLn ("La cola de espera es:" ++ show pque)
 >   case g of
->       Cleaning -> do atomically $ lock mS >> lock wS
->                      waitTillEveryoneLeavesT genre brC 3
->                      putStrLn "Entra limpieza1"
->                      br <- atomically $ readTChan brC
->                      putStrLn br
->                      atomically $ unlock mS >> unlock wS
->                      bathroomHandlerT wS mS pqueC brC
->       _        -> do if g == genre
->                      then do case g of
->                               Women -> do atomically $ lock wS
->                                           br <- atomically $ readTChan brC
->                                           putStrLn br
->                                           atomically $ unlock wS
->                               Men   -> do atomically $ lock mS
->                                           br <- atomically $ readTChan brC
->                                           putStrLn br
->                                           atomically $ unlock mS
->                              showPeopleIn g 2
->                              showPeopleIn g 3
->                              bathroomT g 3 wS mS pqueC brC
->                      else do case genre of
->                               Women -> do atomically $ lock wS
->                                           waitTillEveryoneLeavesT genre brC 3
->                                           atomically $ unlock mS
->                               Men   -> do atomically $ lock mS
->                                           waitTillEveryoneLeavesT genre brC 3
->                                           atomically $ unlock wS
->                              showPeopleIn g 1
->                              bathroomT g 1 wS mS pqueC brC
->
-> bathroomT genre n wS mS pqueC brC = do
->   (g, pque) <- atomically $ nextInLineT pqueC
->   putStrLn ("La cola de espera es:" ++ show pque)
->   case g of
->       Cleaning -> do atomically $ lock mS >> lock wS
->                      waitTillEveryoneLeavesT genre brC n
+>       Cleaning -> do waitTillEveryoneLeavesT genre brC 3
+>                      atomically $ writeTVar mv True
 >                      putStrLn "Entra limpieza"
 >                      br <- atomically $ readTChan brC
 >                      putStrLn br
->                      atomically $ unlock mS >> unlock wS
->                      bathroomHandlerT wS mS pqueC brC
+>                      bathroomHandlerT pqueC brC
 >       _        -> do if g == genre
->                      then do showPeopleIn g (n + 1)
->                              bathroomT g (n + 1) wS mS pqueC brC
->                      else do case genre of
->                               Women -> do atomically $ lock wS
->                                           waitTillEveryoneLeavesT genre brC n
->                                           atomically $ unlock mS
->                               Men   -> do atomically $ lock mS
->                                           waitTillEveryoneLeavesT genre brC n
->                                           atomically $ unlock wS
+>                      then do br <- atomically $ readTChan brC
+>                              putStrLn br
+>                              showPeopleIn g 2
+>                              atomically $ writeTVar mv True
+>                              showPeopleIn g 3
+>                              bathroomT g 3 pqueC brC
+>                      else do waitTillEveryoneLeavesT genre brC 3
+>                              atomically $ writeTVar mv True
 >                              showPeopleIn g 1
->                              bathroomT g 1 wS mS pqueC brC
+>                              bathroomT g 1 pqueC brC
+>
+> bathroomT genre n pqueC brC = do
+>   (pque, (mv, g)) <- atomically $ nextInLineT pqueC
+>   putStrLn ("La cola de espera es:" ++ show pque)
+>   case g of
+>       Cleaning -> do waitTillEveryoneLeavesT genre brC n
+>                      atomically $ writeTVar mv True
+>                      putStrLn "Entra limpieza"
+>                      br <- atomically $ readTChan brC
+>                      putStrLn br
+>                      bathroomHandlerT pqueC brC
+>       _        -> do if g == genre
+>                      then do atomically $ writeTVar mv True
+>                              showPeopleIn g (n + 1)
+>                              bathroomT g (n + 1) pqueC brC
+>                      else do waitTillEveryoneLeavesT genre brC n
+>                              atomically $ writeTVar mv True
+>                              showPeopleIn g 1
+>                              bathroomT g 1 pqueC brC
 
 \end{lstlisting}
 
@@ -477,27 +443,17 @@ que la cola de espera crezca demasiado rápido.
 
 \begin{lstlisting}
 
-> takeSeqT :: Seq Genre ->
->            IO (Seq Genre, Maybe (Genre, Seq Genre))
-> takeSeqT ss = do
->   case viewl ss of
->        EmptyL  -> return (ss, Nothing)
->        x :< xs -> do putStrLn ("La cola de espera es:"
->                               ++ show ss)
->                      return (xs, Just (x, xs))
->
-> takeSeqP :: Seq Genre -> Maybe (Genre, Seq Genre)
 > takeSeqP ss = case viewl ss of
->                    EmptyL  -> Nothing
->                    x :< xs -> Just (x, xs)
+>                    EmptyL  -> (ss, Nothing)
+>                    x :< xs -> do (xs, Just (x, xs))
 >
 > nextInLineT pqueC = do
->   que <- readTVar pqueC
->   let m = takeSeqP que
+>   q <- readTVar pqueC
+>   let (q', m) = takeSeqP q
+>   writeTVar pqueC q'
 >   case m of
 >       Nothing -> retry
->       Just (g, que') -> do writeTVar pqueC que'
->                            return (g, que)
+>       Just (T (mv, g), rest) -> do return (q, (mv, g))
 >
 > waitTillEveryoneLeavesT :: Genre -> TChan String -> Int -> IO ()
 > waitTillEveryoneLeavesT genre brC 0 = return ()
@@ -520,19 +476,22 @@ que la cola de espera crezca demasiado rápido.
 
 \begin{lstlisting}
 
-> cleaningThreadT :: TVar (Seq Genre) -> TChan String -> IO ()
+> unlock tv = do b <- readTVar tv
+>                if b then return()
+>                else retry
+>
 > cleaningThreadT pqueC brC = do
->   atomically $ modifyTVar pqueC (\ss -> Cleaning <| ss)
+>   mv <- newTVarIO False
+>   atomically $ modifyTVar pqueC (\ss -> ( T (mv, Cleaning) <| ss))
 >   putStrLn "La limpieza quiere entrar.."
+>   mv' <- atomically $ unlock mv
 >   clean
 >   atomically $ writeTChan brC "Listo! Ya Limpie"
 >
-> genreThreadT :: Genre -> Semaphore ->
->                 TVar (Seq Genre) -> TChan String -> IO ()
-> genreThreadT genre s pqueC brC = do
->   atomically $ modifyTVar pqueC (\ss -> ss |> genre)
->   atomically $ waitUnlock s
->   putStrLn $ show genre ++ " usa el ba;o"
+> genreThreadT genre pqueC brC = do
+>   mv <- newTVarIO False
+>   atomically $ modifyTVar pqueC (\ss -> (ss |> T (mv, genre)))
+>   mv' <- atomically $ unlock mv
 >   useBathroom
 >   atomically $ writeTChan brC ("Listo! (" ++ show genre ++ ")")
 
@@ -542,22 +501,24 @@ que la cola de espera crezca demasiado rápido.
 \noindent
 \colorbox{lightorange}{
 \parbox{\linewidth}{
+peopleInLine serán la función del hilo que
+crea a las personas. Tiene un delay para evitar
+que la cola de espera crezca demasiado rápido.
 }
 }
 \\
 
 \begin{lstlisting}
 
-> peopleInLineT wS mS pqueC brC = do
+> peopleInLineT pqueC brC = do
 >   r <- randomRIO (0, 1.0) :: IO Double
 >   let g = people r
->   case g of
->       Cleaning -> forkIO (cleaningThreadT pqueC brC)
->       Women    ->  forkIO (genreThreadT g wS pqueC brC)
->       Men      ->  forkIO (genreThreadT g mS pqueC brC)
->   r' <- randomRIO (8000, 200000)
+>   if g == Cleaning
+>   then forkIO (cleaningThreadT pqueC brC)
+>   else forkIO (genreThreadT g pqueC brC)
+>   r' <- randomRIO (80000, 200000)
 >   threadDelay r'
->   peopleInLineT wS mS pqueC brC
+>   peopleInLineT pqueC brC
 
 \end{lstlisting}
 
@@ -570,12 +531,10 @@ que la cola de espera crezca demasiado rápido.
 >                       brC <- newChan
 >                       forkIO (peopleInLine pqueC brC)
 >                       bathroomHandler pqueC brC
->       "STM"     -> do pqueT <- newTVarIO empty
->                       brT <- atomically newTChan
->                       wS <- newSem True
->                       mS <- newSem True
->                       forkIO (peopleInLineT wS mS pqueT brT)
->                       bathroomHandlerT wS mS pqueT brT
+>       "STM"     -> do pqueT <- newTVarIO $ empty
+>                       brT <- atomically $ newTChan
+>                       forkIO (peopleInLineT pqueT brT)
+>                       bathroomHandlerT pqueT brT
 >       _         -> putStrLn ("USO: las simulaciones "
 >                             ++ "disponibles son "
 >                             ++ "\"Clasica\" y \"STM\"")
