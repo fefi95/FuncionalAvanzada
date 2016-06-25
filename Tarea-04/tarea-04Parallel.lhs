@@ -53,12 +53,10 @@
 
 > {-# LANGUAGE BangPatterns #-}
 
-> import Control.Parallel.Strategies (using, parList, rseq, r0, parListChunk, parTuple2, rpar, rparWith)
+> import Control.Parallel.Strategies (using, rpar, rseq)
 > import Control.Parallel (pseq, par)
 > import System.Environment (getArgs)
 > import qualified Control.Monad.Par as P
-> import Criterion
-> import Criterion.Main
 
 \end{lstlisting}
 
@@ -73,7 +71,7 @@ Proponga una implantación usando el monad \texttt{Par} con la
 técnica de \emph{dataflow parallelism}, y otra implantación usando
 estrategias de paralelismo. En ambos casos, asegúrese de encontrar
 una solución con un balance de trabajo razonablemente equilibrado
-para dos (2) núcleos de procesamiento.
+para dos (2) núcleos de procesamiento.\\
 
 \noindent
 \colorbox{lightorange}{
@@ -111,6 +109,23 @@ explicado en clase. De esta manera se puede analizar cual ha sido la mejora.
 
 \end{lstlisting}
 
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+Para los casos en paralelos se busca dividir el arreglo en 2
+cada vez que se hace la llamada recursiva y ordenarlos en
+paralelo. Sin embargo estas divisiones tienen que ser suficientemente
+grandes para que valga la pena crear un hilo.\\
+
+Para ello en el caso de \texttt{Strategies} agregamos un parámetro
+estra que permita controlar la cantidad de veces que se divide
+cada sub arreglo. Con \texttt{Par} no es necesario porque puede
+determinar si vale la pena crear un spark o no.
+
+}
+}
+\\
+
 \begin{lstlisting}
 
 > msortS 0 []  = []
@@ -143,26 +158,24 @@ explicado en clase. De esta manera se puede analizar cual ha sido la mejora.
 >   return $ merge sMiti sMita
 >
 > msortP xs = P.runPar $ msortPaux xs
->   --[sortMiti, sortMita, xs'] <- sequence $ replicate 3 P.new
->   --let (miti, mita) = halve xs
->   --P.fork $ P.put sortMiti (msortP miti)
->   --P.fork $ P.put sortMita (msortP mita)
->   --P.fork $ do sMiti <- P.get sortMiti
->   --            sMita <- P.get sortMita
->   --            P.put xs' (merge sMiti sMita)
->   --P.get xs'
 >
 
 \end{lstlisting}
+
+\pagebreak
 
 \begin{lstlisting}
 
 > main = do
 >   (x:_) <- getArgs
+>   let xs = ([1..1000000] :: [Int])
 >   case x of
->       "Sec" -> print $ msort [1..100000]
->       "Str" -> print $ msortS 8 [1..100000]
->       "Par" -> print $ msortP ([1..100000] :: [Int])
+>       "Sec" -> do let !m = msort xs
+>                   return ()
+>       "Str" -> do let !m = msortS 10 xs
+>                   return ()
+>       "Par" -> do let !m = msortP xs
+>                   return ()
 >       _     -> putStrLn "Not a valid option, ja ja!"
 
 \end{lstlisting}
