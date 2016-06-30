@@ -42,9 +42,9 @@
 
 \title{CI4251 - Programación Funcional Avanzada \\ Tarea 5}
 
-\author{Ernesto Hernández-Novich\\
-86-17791\\
-\href{mailto:emhn@usb.ve}{<emhn@usb.ve>}}
+\author{Stefani Castellanos\\
+11-11394\\
+\href{mailto:scct95@gmail.com}{<scct95@gmail.com>}}
 
 \date{Junio 28, 2016}
 
@@ -122,17 +122,31 @@ Ud. debe implantar en Haskell dos soluciones a este problema:
   \\
 
   \begin{lstlisting}
+
+> {-# LANGUAGE BangPatterns #-}
+>
 > droppingsR :: Int -> Int -> Int
-> droppingsR n k = undefined
+> droppingsR 1 !k  = k
+> droppingsR !n !k = droppingsA n k 0
+>                  where droppingsA 1 k !a = k + a - 1
+>                        droppingsA n k !a
+>                                   | k == 1 =  a
+>                                   | k == 3 = droppingsA (n - 1) 2 (a + 1)
+>                                   | otherwise = droppingsA (n - 1) (k `div` 2) (a + 1)
+
   \end{lstlisting}
 \item
   Una solución utilizando técnicas de programación dinámica
   apoyadas en arreglos Haskell -- esta será la solución
   eficiente.
+
   \begin{lstlisting}
+
 > droppingsD :: Int -> Int -> Int
 > droppingsD n k = undefined
+
   \end{lstlisting}
+  
 \end{itemize}
 
 \noindent
