@@ -124,9 +124,22 @@ Ud. debe implantar en Haskell dos soluciones a este problema:
 > import Criterion.Main
 
   \end{lstlisting}
+  
   \noindent
   \colorbox{lightorange}{
   \parbox{\linewidth}{
+   Una solución inocente a este problema es escribir la recursión
+   directa; utilizar soluciones anteriores para encontrar el menor
+   de los "peores casos" para el n y el k proporcionados. En general,
+   se lanza el globo desde un piso, si explota se tiene un globo menos
+   y un piso menos que revisar. Si no explota, se tiene la misma cantidad
+   de globos revisando los restantes k - x, para x entre 1 y k. En
+   cualquier caso se agrega un lanzamiento.\\
+
+   Note que esta solución es altamente ineficiente puesto que se
+   comporta como fibonacci recursivo inocente, es decir, para
+   cada entrada se requieren recalcular varias veces problemas
+   más pequeños.
 
   }
   }
