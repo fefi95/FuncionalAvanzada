@@ -113,6 +113,17 @@ Ud. debe implantar en Haskell dos soluciones a este problema:
   Una solución utilizando recursión directa y sincera -- esta
   es la solución «de control».
 
+  \begin{lstlisting}
+
+> {-# LANGUAGE BangPatterns #-}
+>
+> import Data.Array.ST (newArray, readArray, writeArray, runSTArray)
+> import Data.Array
+> import Control.Monad (forM_)
+> import Criterion
+> import Criterion.Main
+
+  \end{lstlisting}
   \noindent
   \colorbox{lightorange}{
   \parbox{\linewidth}{
@@ -123,16 +134,25 @@ Ud. debe implantar en Haskell dos soluciones a este problema:
 
   \begin{lstlisting}
 
-> {-# LANGUAGE BangPatterns #-}
->
 > droppingsR :: Int -> Int -> Int
-> droppingsR 1 !k  = k
-> droppingsR !n !k = droppingsA n k 0
->                  where droppingsA 1 k !a = k + a - 1
->                        droppingsA n k !a
->                                   | k == 1 =  a
->                                   | k == 3 = droppingsA (n - 1) 2 (a + 1)
->                                   | otherwise = droppingsA (n - 1) (k `div` 2) (a + 1)
+> droppingsR 1 !k = k
+> droppingsR !n !k
+>   |k > 0 = 1 + minimum [max (droppingsR (n - 1) (x - 1)) (droppingsR n (k - x)) | x <- [1 .. k]]
+>   |otherwise = 0
+>
+> droppingsA 1 !k = k
+> droppingsA !n !k
+>   |k > 1 = 1 + foldr (aux n k) k [1..k]
+>   |otherwise = k
+> aux n k !x !m = min m (max (droppingsA (n - 1) (x - 1)) (droppingsA n (k - x)))
+>
+> --droppingsR 1 !k |k > 0 = k
+> --droppingsR !n !k
+> --      |k == 0    = 1
+> --      |k == 1    = 1
+> --      |odd k     = (min (droppingsR (n - 1) kd2) (droppingsR n (kd2 + 1))) + 1
+> --      |otherwise = (min (droppingsR (n - 1) kd2) (droppingsR n kd2)) + 1
+> --                  where kd2 = k `div` 2
 
   \end{lstlisting}
 \item
@@ -143,10 +163,25 @@ Ud. debe implantar en Haskell dos soluciones a este problema:
   \begin{lstlisting}
 
 > droppingsD :: Int -> Int -> Int
-> droppingsD n k = undefined
+> droppingsD n k = (auxD n k) ! (n, k)
+>
+> auxD n k = runSTArray $ do
+>   a <- newArray ((0, 0),(n, k)) 5000
+>   forM_ [0..k] $ \j -> do writeArray a (0,j) 0
+>                           writeArray a (1,j) j
+>   forM_ [0..n] $ \i -> do writeArray a (i,0) 0
+>                           writeArray a (i,1) 1
+>   forM_ [2..n] $ \i -> do
+>           forM_ [2..k] $ \j -> do
+>               forM_ [1..j] $ \x -> do
+>                   aij <- readArray a (i,j)
+>                   anx <- readArray a (i - 1, x - 1)
+>                   akx <- readArray a (i , j - x)
+>                   writeArray a (i,j) (min aij (1 + (max anx akx)))
+>   return a
 
   \end{lstlisting}
-  
+
 \end{itemize}
 
 \noindent
@@ -157,5 +192,18 @@ monad \texttt{ST}, pero sepa que recibirá cinco (5) puntos extra,
 si presenta una solución con arreglos \emph{inmutables} llenos
 de \emph{thunks} escritos de manera astuta.
 \\
+
+\begin{lstlisting}
+
+> main = --defaultMain [
+>        --             bench "Recursive" $ nf (droppingsR 2) 20,
+>        --             bench "Dynamic" $ nf (droppingsD 2) 20
+>        --            ]
+>        forM_ [1..30] $ \i -> do putStr $ "Recursive " ++ show i ++ " "
+>                                 print $  droppingsA 2 i
+>                                 putStr $ "Dynamic " ++ show i ++ " "
+>                                 print $  droppingsD 2 i
+
+\end{lstlisting}
 
 \end{document}
