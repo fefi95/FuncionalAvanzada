@@ -120,7 +120,7 @@ Ud. debe implantar en Haskell dos soluciones a este problema:
 >
 > import Data.Array.ST (newArray, readArray, writeArray,
 >                       runSTArray)
-> import Data.Array
+> import Data.Array (array, range, (!))
 > import Control.Monad (forM_)
 > import Criterion
 > import Criterion.Main
@@ -152,9 +152,10 @@ Ud. debe implantar en Haskell dos soluciones a este problema:
 > droppingsR :: Int -> Int -> Int
 > droppingsR 1 !k = k
 > droppingsR !n !k
->   |k > 1 = 1 + foldr (aux n k) k [1..k]
+>   |k > 1 = 1 + foldr aux k [1..k]
 >   |otherwise = k
-> aux n k !x !m = min m (max (droppingsR (n - 1) (x - 1)) (droppingsR n (k - x)))
+>    where aux !x !m = min m (max (droppingsR (n - 1) (x - 1))
+>                (droppingsR n (k - x)))
 
   \end{lstlisting}
 \item
@@ -191,12 +192,12 @@ Ud. debe implantar en Haskell dos soluciones a este problema:
 >   forM_ [0..n] $ \i -> do writeArray a (i,0) 0
 >                           writeArray a (i,1) 1
 >   forM_ [2..n] $ \i -> do
->           forM_ [2..k] $ \j -> do
->               forM_ [1..j] $ \x -> do
->                   aij <- readArray a (i,j)
->                   anx <- readArray a (i - 1, x - 1)
->                   akx <- readArray a (i , j - x)
->                   writeArray a (i,j) (min aij (1 + (max anx akx)))
+>      forM_ [2..k] $ \j -> do
+>          forM_ [1..j] $ \x -> do
+>              aij <- readArray a (i,j)
+>              anx <- readArray a (i - 1, x - 1)
+>              akx <- readArray a (i , j - x)
+>              writeArray a (i,j) (min aij (1 + (max anx akx)))
 >   return a
 
   \end{lstlisting}
@@ -231,19 +232,23 @@ posiciones a partir de sub-problemas.
 }
 \\
 
+\pagebreak
+
 \begin{lstlisting}
 
 > droppingsDI :: Int -> Int -> Int
 > droppingsDI n k = (auxDI n k) ! (n, k)
 >
 > auxDI n k = table
->        where table = array ((0,0), (n, k)) [(i, f i) | i <- range ((0,0), (n, k))]
+>        where table = array ((0,0), (n, k))
+>                      [(i, f i) | i <- range ((0,0), (n, k))]
 >              f (i, 0) = 0
 >              f (i, 1) = 1
 >              f (0, j) = 0
 >              f (1, j) = j
 >              f (i, j) = 1 + foldr (aux i j) j [1..j]
->              aux i j x m = min m (max (table ! (i - 1, x - 1)) (table ! (i, j - x)))
+>              aux i j x m = min m (max (table ! (i - 1, x - 1))
+>                                       (table ! (i, j - x)))
 
 \end{lstlisting}
 
@@ -255,11 +260,11 @@ posiciones a partir de sub-problemas.
 >        --             bench "Dynamic I." $ nf (droppingsDI 2) 21,
 >        --            ]
 >        forM_ [1..30] $ \i -> do putStr $ "Recursive " ++ show i ++ " "
->                                 print $  droppingsR 3 i
+>                                 print $  droppingsR 2 i
 >                                 putStr $ "Dynamic " ++ show i ++ " "
->                                 print $  droppingsD 3 i
+>                                 print $  droppingsD 2 i
 >                                 putStr $ "Dynamic I " ++ show i ++ " "
->                                 print $  droppingsDI 3 i
+>                                 print $  droppingsDI 2 i
 
 \end{lstlisting}
 
