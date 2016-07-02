@@ -254,18 +254,32 @@ posiciones a partir de sub-problemas.
 
 \begin{lstlisting}
 
-> main = --defaultMain [
->        --             bench "Recursive" $ nf (droppingsR 2) 21,
->        --             bench "Dynamic M." $ nf (droppingsD 2) 21
->        --             bench "Dynamic I." $ nf (droppingsDI 2) 21,
->        --            ]
->        forM_ [1..30] $ \i -> do putStr $ "Recursive " ++ show i ++ " "
->                                 print $  droppingsR 2 i
->                                 putStr $ "Dynamic " ++ show i ++ " "
->                                 print $  droppingsD 2 i
->                                 putStr $ "Dynamic I " ++ show i ++ " "
->                                 print $  droppingsDI 2 i
+> main = defaultMain [
+>                     bench "Recursive" $ nf (droppingsR 2) 21,
+>                     bench "Dynamic M." $ nf (droppingsD 2) 21,
+>                     bench "Dynamic I." $ nf (droppingsDI 2) 21
+>                    ]
 
 \end{lstlisting}
 
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+\textbf{Criterion:} es útil comparar los resultados
+usando \texttt{Criterion}. Tenemos:\\
+
+Recursive: 402.8244 ms, lb 383.0144 ms, ub 435.5609 ms
+Dynamic Mutable: 783.3320 us, lb 780.0740 us, ub 787.8435 us
+Dynamic Inmmutable: 211.9365 us, lb 211.5701 us, ub 212.3152 us
+\\
+La solución recursiva es mucho más ineficiente que las otras como
+habíamos previsto, de hecho está medida en mulisegundos
+y no en nanosegundos. Utilizando arreglos inmutables es más
+eficiente en el uso de los recursos por lo que es más rápida
+que la solución con arreglos mutables, sin embargo ambas se
+comportan adecuadamente.
+
+}
+}
+\\
 \end{document}
