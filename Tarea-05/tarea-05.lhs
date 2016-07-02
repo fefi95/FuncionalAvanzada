@@ -113,27 +113,29 @@ Ud. debe implantar en Haskell dos soluciones a este problema:
   Una solución utilizando recursión directa y sincera -- esta
   es la solución «de control».
 
+\pagebreak
   \begin{lstlisting}
 
 > {-# LANGUAGE BangPatterns #-}
 >
-> import Data.Array.ST (newArray, readArray, writeArray, runSTArray)
+> import Data.Array.ST (newArray, readArray, writeArray,
+>                       runSTArray)
 > import Data.Array
 > import Control.Monad (forM_)
 > import Criterion
 > import Criterion.Main
 
   \end{lstlisting}
-  
+
   \noindent
   \colorbox{lightorange}{
   \parbox{\linewidth}{
    Una solución inocente a este problema es escribir la recursión
    directa; utilizar soluciones anteriores para encontrar el menor
-   de los "peores casos" para el n y el k proporcionados. En general,
+   de los "peores casos" para el $n$ y el $k$ proporcionados. En general,
    se lanza el globo desde un piso, si explota se tiene un globo menos
    y un piso menos que revisar. Si no explota, se tiene la misma cantidad
-   de globos revisando los restantes k - x, para x entre 1 y k. En
+   de globos revisando los restantes $k - x$, para $x$ entre 1 y k. En
    cualquier caso se agrega un lanzamiento.\\
 
    Note que esta solución es altamente ineficiente puesto que se
@@ -150,22 +152,9 @@ Ud. debe implantar en Haskell dos soluciones a este problema:
 > droppingsR :: Int -> Int -> Int
 > droppingsR 1 !k = k
 > droppingsR !n !k
->   |k > 0 = 1 + minimum [max (droppingsR (n - 1) (x - 1)) (droppingsR n (k - x)) | x <- [1 .. k]]
->   |otherwise = 0
->
-> droppingsA 1 !k = k
-> droppingsA !n !k
 >   |k > 1 = 1 + foldr (aux n k) k [1..k]
 >   |otherwise = k
-> aux n k !x !m = min m (max (droppingsA (n - 1) (x - 1)) (droppingsA n (k - x)))
->
-> --droppingsR 1 !k |k > 0 = k
-> --droppingsR !n !k
-> --      |k == 0    = 1
-> --      |k == 1    = 1
-> --      |odd k     = (min (droppingsR (n - 1) kd2) (droppingsR n (kd2 + 1))) + 1
-> --      |otherwise = (min (droppingsR (n - 1) kd2) (droppingsR n kd2)) + 1
-> --                  where kd2 = k `div` 2
+> aux n k !x !m = min m (max (droppingsR (n - 1) (x - 1)) (droppingsR n (k - x)))
 
   \end{lstlisting}
 \item
@@ -173,13 +162,30 @@ Ud. debe implantar en Haskell dos soluciones a este problema:
   apoyadas en arreglos Haskell -- esta será la solución
   eficiente.
 
+  \noindent
+  \colorbox{lightorange}{
+  \parbox{\linewidth}{
+  En el caso recursivo se utilizaron soluciones más "pequeñas"
+  para dar con el resultado, para la solución usando
+  programación dinámica realizaremos el mismo truco, pero
+  que no será necesario recalcular casos más pequeños
+  puesto que cada solución a un problema se guardará
+  en la posición $(i, j)$ de la matriz, la $i$
+  representan la cantidad de globos para esa solución y la $j$
+  la cantidad de pisos. Luego el resultado final se encuentra
+  en la posición $(n, k)$ del arreglo. Se cambiará tiempo por
+  espacio. El código es directo :
+  }
+  }
+  \\
+
   \begin{lstlisting}
 
 > droppingsD :: Int -> Int -> Int
 > droppingsD n k = (auxD n k) ! (n, k)
 >
 > auxD n k = runSTArray $ do
->   a <- newArray ((0, 0),(n, k)) 5000
+>   a <- newArray ((0, 0),(n, k)) k
 >   forM_ [0..k] $ \j -> do writeArray a (0,j) 0
 >                           writeArray a (1,j) j
 >   forM_ [0..n] $ \i -> do writeArray a (i,0) 0
@@ -206,16 +212,54 @@ si presenta una solución con arreglos \emph{inmutables} llenos
 de \emph{thunks} escritos de manera astuta.
 \\
 
+\noindent
+\colorbox{lightorange}{
+\parbox{\linewidth}{
+\textbf{Extra:} La solución anterior funciona bien,
+sin embargo se puede notar que una vez calculada una
+posición $(i, j)$ de la matriz, no hay manera que cálculos
+subsecuentes afecten el resultado que se encuentra en dicha
+posición. Por lo tanto la solución se puede hallar con una
+matriz inmutable que dependa de los cálculos anteriores para
+calcular la posición indicada. De nuevo el resultado se
+encontrará en la posición $(n, k)$.\\
+
+La función f es la que realmente realiza los cálculos,
+se definen los casos bases y finalmente se obtienen las
+posiciones a partir de sub-problemas.
+}
+}
+\\
+
+\begin{lstlisting}
+
+> droppingsDI :: Int -> Int -> Int
+> droppingsDI n k = (auxDI n k) ! (n, k)
+>
+> auxDI n k = table
+>        where table = array ((0,0), (n, k)) [(i, f i) | i <- range ((0,0), (n, k))]
+>              f (i, 0) = 0
+>              f (i, 1) = 1
+>              f (0, j) = 0
+>              f (1, j) = j
+>              f (i, j) = 1 + foldr (aux i j) j [1..j]
+>              aux i j x m = min m (max (table ! (i - 1, x - 1)) (table ! (i, j - x)))
+
+\end{lstlisting}
+
 \begin{lstlisting}
 
 > main = --defaultMain [
->        --             bench "Recursive" $ nf (droppingsR 2) 20,
->        --             bench "Dynamic" $ nf (droppingsD 2) 20
+>        --             bench "Recursive" $ nf (droppingsR 2) 21,
+>        --             bench "Dynamic M." $ nf (droppingsD 2) 21
+>        --             bench "Dynamic I." $ nf (droppingsDI 2) 21,
 >        --            ]
 >        forM_ [1..30] $ \i -> do putStr $ "Recursive " ++ show i ++ " "
->                                 print $  droppingsA 2 i
+>                                 print $  droppingsR 3 i
 >                                 putStr $ "Dynamic " ++ show i ++ " "
->                                 print $  droppingsD 2 i
+>                                 print $  droppingsD 3 i
+>                                 putStr $ "Dynamic I " ++ show i ++ " "
+>                                 print $  droppingsDI 3 i
 
 \end{lstlisting}
 
