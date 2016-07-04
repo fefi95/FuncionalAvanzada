@@ -268,10 +268,10 @@ posiciones a partir de sub-problemas.
 \textbf{Criterion:} es útil comparar los resultados
 usando \texttt{Criterion}. Tenemos:\\
 
-Recursive: 402.8244 ms, lb 383.0144 ms, ub 435.5609 ms
-Dynamic Mutable: 783.3320 us, lb 780.0740 us, ub 787.8435 us
-Dynamic Inmmutable: 211.9365 us, lb 211.5701 us, ub 212.3152 us
-\\
+Recursive: 402.8244 ms, lb 383.0144 ms, ub 435.5609 ms\\
+Dynamic Mutable: 783.3320 us, lb 780.0740 us, ub 787.8435 us\\
+Dynamic Inmmutable: 211.9365 us, lb 211.5701 us, ub 212.3152 us\\
+
 La solución recursiva es mucho más ineficiente que las otras como
 habíamos previsto, de hecho está medida en mulisegundos
 y no en nanosegundos. Utilizando arreglos inmutables es más
